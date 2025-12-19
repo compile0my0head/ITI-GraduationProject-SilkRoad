@@ -14,7 +14,7 @@ public class ProductEmbeddingService : IProductEmbeddingService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ProductEmbeddingService> _logger;
-    private const string EMBEDDING_WEBHOOK_URL = "https://mahmoud-talaat.app.n8n.cloud/webhook-test/embed-products";
+    private const string EMBEDDING_WEBHOOK_URL = "https://mahmoud-talaat.app.n8n.cloud/webhook/embed-products";
 
     public ProductEmbeddingService(
         IHttpClientFactory httpClientFactory,
