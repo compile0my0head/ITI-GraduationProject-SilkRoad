@@ -141,11 +141,30 @@ public class CampaignPostService : ICampaignPostService
         // Store old scheduled time to check if it changed
         var oldScheduledAt = post.ScheduledAt;
 
-        // Update the post properties
-        _mapper.Map(request, post);
+        // Manually update properties to ensure they are applied
+        if (request.CampaignId.HasValue)
+        {
+            post.CampaignId = request.CampaignId.Value;
+        }
+        
+        if (!string.IsNullOrEmpty(request.PostCaption))
+        {
+            post.PostCaption = request.PostCaption;
+        }
+        
+        if (request.PostImageUrl != null) // Allow empty string to clear the URL
+        {
+            post.PostImageUrl = request.PostImageUrl;
+        }
+        
+        if (request.ScheduledAt.HasValue)
+        {
+            post.ScheduledAt = request.ScheduledAt.Value;
+        }
+
         await _unitOfWork.CampaignPosts.UpdateAsync(post, cancellationToken);
 
-        // ? CRITICAL: Propagate updates to all CampaignPostPlatform records
+        // ?? CRITICAL: Propagate updates to all CampaignPostPlatform records
         // Get all platform posts for this campaign post using optimized query
         var platformPosts = await _unitOfWork.CampaignPostPlatforms.GetByCampaignPostIdAsync(postId, cancellationToken);
 

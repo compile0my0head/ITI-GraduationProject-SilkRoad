@@ -126,34 +126,39 @@ public class CampaignPostsController : ControllerBase
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return BadRequest(new { message = "Invalid request data.", errors = ModelState });
         }
 
         try
         {
             var post = await _serviceManager.CampaignPostService.UpdatePostAsync(postId, request);
-            return Ok(post);
+            return Ok(new 
+            { 
+                success = true, 
+                message = $"Campaign post '{post.PostCaption?.Substring(0, Math.Min(50, post.PostCaption.Length))}...' updated successfully.",
+                data = post 
+            });
         }
         catch (KeyNotFoundException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { success = false, message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { success = false, message = ex.Message });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = $"An error occurred while updating the campaign post: {ex.Message}" });
+            return StatusCode(500, new { success = false, message = $"An error occurred while updating the campaign post: {ex.Message}" });
         }
     }
 
     /// <summary>
-    /// Delete a campaign post
+    /// Delete a campaign post (soft delete)
     /// STORE-SCOPED - X-Store-ID required
     /// </summary>
     [HttpDelete("{postId:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -163,19 +168,23 @@ public class CampaignPostsController : ControllerBase
         try
         {
             await _serviceManager.CampaignPostService.DeletePostAsync(postId);
-            return NoContent();
+            return Ok(new 
+            { 
+                success = true, 
+                message = $"Campaign post with ID '{postId}' has been deleted successfully." 
+            });
         }
         catch (KeyNotFoundException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { success = false, message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { success = false, message = ex.Message });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = $"An error occurred while deleting the campaign post: {ex.Message}" });
+            return StatusCode(500, new { success = false, message = $"An error occurred while deleting the campaign post: {ex.Message}" });
         }
     }
 }
