@@ -1,0 +1,24 @@
+[
+  {
+    "Id": "de3f6af4-e2c6-4702-b5c0-3d6f435b316d",
+    "CampaignId": "c1d67c61-78b2-4be3-91c8-55b1874e2d11",
+    "PlatformId": "77b57a02-28fb-4b89-6d1c-08de34eae319",
+    "PostCaption": "🚀 Big sale at Nexus Tech! Discover smart gadgets today!",
+    "PostImageUrl": "https://via.placeholder.com/150/00AAFF/FFFFFF?text=Tech+Sale",
+    "PostType": 1,
+    "ScheduledAt": "2025-02-10T12:00:00Z",
+    "PublishedAt": null,
+    "Status": 0
+  },
+  {
+    "Id": "fe99ac46-22e8-4c13-94f3-94ba50e93d21",
+    "CampaignId": "a72d1249-9f81-4332-9e09-742b58c93fcf",
+    "PlatformId": "77b57a02-28fb-4b89-6d1c-08de34eae319",
+    "PostCaption": "✨ Stylish handmade designs — new arrivals just dropped!",
+    "PostImageUrl": "https://via.placeholder.com/150/FF55AA/FFFFFF?text=Fashion",
+    "PostType": 1,
+    "ScheduledAt": null,
+    "PublishedAt": null,
+    "Status": 0
+  }
+]

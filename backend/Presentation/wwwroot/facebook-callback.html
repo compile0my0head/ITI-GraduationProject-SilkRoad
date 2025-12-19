@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facebook OAuth Callback</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .button {
+            background: #4267B2;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #365899;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Facebook OAuth Callback</h1>
+        <div id="status">Processing...</div>
+        <div id="result"></div>
+        
+        <hr>
+        <h3>How to Use:</h3>
+        <ol>
+            <li>Click the button below to start Facebook OAuth</li>
+            <li>Authorize your Facebook page</li>
+            <li>You'll be redirected back here</li>
+            <li>The code will be automatically sent to your API</li>
+        </ol>
+        
+        <a href="#" id="connectFacebook" class="button">Connect Facebook</a>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            facebookAppId: 'YOUR_FACEBOOK_APP_ID',  // ?? CHANGE THIS
+            redirectUri: 'https://localhost:5001/facebook-callback.html',  // This page
+            apiBaseUrl: 'https://localhost:5001/api',
+            storeId: 'YOUR_STORE_ID',  // ?? CHANGE THIS
+            jwtToken: 'YOUR_JWT_TOKEN'  // ?? CHANGE THIS (get from login)
+        };
+
+        // Step 1: Redirect to Facebook
+        document.getElementById('connectFacebook').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const scope = 'pages_show_list,pages_manage_posts,pages_read_engagement';
+            const facebookAuthUrl = 
+                `https://www.facebook.com/v18.0/dialog/oauth?` +
+                `client_id=${config.facebookAppId}` +
+                `&redirect_uri=${encodeURIComponent(config.redirectUri)}` +
+                `&scope=${scope}` +
+                `&response_type=code`;
+
+            window.location.href = facebookAuthUrl;
+        });
+
+        // Step 2: Handle callback (Facebook redirects back with code)
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+
+            if (error) {
+                // User denied permission
+                document.getElementById('status').innerHTML = 
+                    `<span class="error">Error: ${error}</span>`;
+                document.getElementById('result').innerHTML = 
+                    `<pre>${errorDescription}</pre>`;
+                return;
+            }
+
+            if (code) {
+                // Success! We have the OAuth code
+                document.getElementById('status').innerHTML = 
+                    '<span class="success">? Facebook code received! Connecting...</span>';
+                
+                // Step 3: Send code to your API
+                connectPlatformToAPI(code);
+            }
+        });
+
+        // Step 3: Call your API
+        async function connectPlatformToAPI(code) {
+            try {
+                const response = await fetch(`${config.apiBaseUrl}/social-platforms/facebook/connect`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${config.jwtToken}`
+                    },
+                    body: JSON.stringify({
+                        storeId: config.storeId,
+                        code: code,
+                        redirectUri: config.redirectUri
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('status').innerHTML = 
+                        '<span class="success">? Facebook connected successfully!</span>';
+                    document.getElementById('result').innerHTML = 
+                        `<h3>Platform Details:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    document.getElementById('status').innerHTML = 
+                        '<span class="error">? Failed to connect Facebook</span>';
+                    document.getElementById('result').innerHTML = 
+                        `<h3>Error:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = 
+                    '<span class="error">? Network error</span>';
+                document.getElementById('result').innerHTML = 
+                    `<pre>${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>
