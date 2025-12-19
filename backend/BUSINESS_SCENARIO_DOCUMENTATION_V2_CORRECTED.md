@@ -873,7 +873,7 @@ function isChatbotOrder(order: Order): boolean {
 **Frontend Implementation**:
 ```typescript
 // Step 1: Build product list locally
-const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
+const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>(p);
 
 function addProductToList(product: Product, quantity: number) {
   setSelectedProducts(prev => [...prev, {
@@ -2152,7 +2152,7 @@ Key Points:
    - **Future**: Dynamic checkboxes from API
 3. User selects platforms + enters caption + uploads image
 4. Submit: `POST /api/campaign-posts` with `platformIds` array
-5. Backend creates `CampaignPost` + `CampaignPostPlatform` records
+5. Backend creates `CampaignPost` + `CampaignPostPlatform` records for each selected platform
 
 **Platform Selection (Temporary Implementation)**:
 ```typescript
@@ -2234,7 +2234,7 @@ Store owner connects their social media accounts to enable automated posting.
 - ?? **TikTok** (planned - not available)
 - ?? **YouTube** (planned - not available)
 
-**Frontend Note**: Until `GET /api/social-platforms/connected` is implemented, assume only Facebook is available.
+**Frontend Assumption**: Until `GET /api/social-platforms/connected` is implemented, assume only Facebook is available.
 
 #### Entity: SocialPlatform
 ```json
