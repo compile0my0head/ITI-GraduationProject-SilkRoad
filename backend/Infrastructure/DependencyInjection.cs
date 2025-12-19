@@ -50,20 +50,12 @@ public static class DependencyInjection
         // Register Identity services
         services.AddScoped<IJwtService, JwtOptions>();
 
-        // Register Data Seeding
-        services.AddScoped<IDataSeeding, DataSeeding>();
-
         // Register Social Platform Publishers
         services.AddScoped<ISocialPlatformPublisher, FacebookPublisher>();
         // Add more publishers here: InstagramPublisher, TwitterPublisher, etc.
 
-        // Register Campaign Scheduling Service
-        services.AddScoped<ICampaignSchedulingService, CampaignSchedulingService>();
-
         // Register Product Embedding Service
         services.AddScoped<IProductEmbeddingService, ProductEmbeddingService>();
-
-        // Add other repositories as you implement them
 
         return services;
     }

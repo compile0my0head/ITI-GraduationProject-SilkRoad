@@ -138,8 +138,6 @@ builder.Services.AddSwaggerGen(c =>
     c.OperationFilter<SwaggerStoreIdHeaderOperationFilter>();
 });
 
-builder.Services.AddScoped<IDataSeeding, DataSeeding>();
-
 // register hangfire
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
@@ -161,13 +159,6 @@ builder.Services.AddHangfireServer();
 
 var app = builder.Build();
 
-// Execute data seeding
-using (var scope = app.Services.CreateScope())
-{
-    var objectOfDataSeeding = scope.ServiceProvider.GetRequiredService<IDataSeeding>();
-    await objectOfDataSeeding.DataSeedAsync();
-}
-        
 // ⭐ Register Exception Middleware FIRST - catches all exceptions
 app.UseMiddleware<ExceptionMiddleware>();
 
