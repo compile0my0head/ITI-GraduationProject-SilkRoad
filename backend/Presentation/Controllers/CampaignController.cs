@@ -73,6 +73,36 @@ public class CampaignsController : ControllerBase
     }
 
     /// <summary>
+    /// Get campaign for editing (returns editable fields)
+    /// STORE-SCOPED - X-Store-ID required
+    /// Use this endpoint to pre-fill edit forms
+    /// </summary>
+    [HttpGet("{campaignId:guid}/edit")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CampaignDto))]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesErrorResponseType(typeof(void))]
+    public async Task<IActionResult> GetCampaignForEdit(Guid campaignId)
+    {
+        try
+        {
+            var campaign = await _serviceManager.CampaignService.GetCampaignByIdAsync(campaignId);
+            
+            if (campaign == null)
+            {
+                return NotFound(new { message = $"Campaign with ID '{campaignId}' not found." });
+            }
+            
+            // Returns the same CampaignDto with all editable fields
+            return Ok(campaign);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"An error occurred while retrieving the campaign for editing: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
     /// Create a new campaign
     /// STORE-SCOPED - X-Store-ID required
     /// </summary>
