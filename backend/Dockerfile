@@ -35,17 +35,19 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # Copy published files
 COPY --from=publish /app/publish .
 
-# Set environment variables
-ENV ASPNETCORE_URLS=http://+:80
+# Set environment variables (Render will override these)
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Expose port
+# ? CRITICAL: Render sets PORT dynamically - don't hardcode ASPNETCORE_URLS here
+# The PORT will be injected by Render at runtime
+
+# Expose port (this is just documentation, actual port comes from $PORT)
 EXPOSE 80
 EXPOSE 443
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl --fail http://localhost/api/diagnostics/health || exit 1
+# Health check (disabled for Render since it uses its own health checks)
+# HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+#   CMD curl --fail http://localhost/api/diagnostics/health || exit 1
 
 # Entry point
 ENTRYPOINT ["dotnet", "Presentation.dll"]
