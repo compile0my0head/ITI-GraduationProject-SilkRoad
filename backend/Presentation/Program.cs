@@ -175,7 +175,17 @@ app.UseMiddleware<ExceptionMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(); 
+    app.UseSwaggerUI();
+}
+// 🔧 Enable Swagger in Production for API testing (disable for strict production)
+if (app.Environment.IsProduction())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Business Manager API v1");
+        c.RoutePrefix = "swagger"; // Access via /swagger
+    });
 }
 
 // ⭐ Enable static files (for facebook-callback.html)
