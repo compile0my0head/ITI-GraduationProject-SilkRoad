@@ -36,6 +36,16 @@ public static class DependencyInjection
         services.AddScoped<ICampaignRepository, CampaignRepository>();
         services.AddScoped<ICampaignPostRepository, CampaignPostRepository>();
         services.AddScoped<ICampaignPostPlatformRepository, CampaignPostPlatformRepository>();
+        services.AddScoped<IStoreRepository, StoreRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IOrderProductRepository, OrderProductRepository>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<ITeamRepository, TeamRepository>();
+        services.AddScoped<ISocialPlatformRepository, SocialPlatformRepository>();
+        services.AddScoped<IAutomationTaskRepository, AutomationTaskRepository>();
+        services.AddScoped<IChatbotFAQRepository, ChatbotFAQRepository>();
+        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
         // Register Identity services
         services.AddScoped<IJwtService, JwtOptions>();

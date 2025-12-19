@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: businessmanager-api
+    ports:
+      - "5000:80"
+      - "5001:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      # Connection string will be overridden by appsettings.Production.json or environment variables
+      - ConnectionStrings__ApplicationSqlConnection=${DB_CONNECTION_STRING}
+      - JwtOptions__SecretKey=${JWT_SECRET_KEY}
+      - JwtOptions__Issuer=${JWT_ISSUER}
+      - JwtOptions__Audience=${JWT_AUDIENCE}
+      - JwtOptions__DurationInDays=${JWT_DURATION_DAYS:-1}
+      - Facebook__AppId=${FACEBOOK_APP_ID}
+      - Facebook__AppSecret=${FACEBOOK_APP_SECRET}
+      - Facebook__RedirectUri=${FACEBOOK_REDIRECT_URI}
+    depends_on:
+      - sqlserver
+    networks:
+      - businessmanager-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/diagnostics/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # SQL Server Database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: businessmanager-db
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${DB_SA_PASSWORD}
+      - MSSQL_PID=Express
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - businessmanager-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P ${DB_SA_PASSWORD} -Q 'SELECT 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  sqlserver-data:
+    driver: local
+
+networks:
+  businessmanager-network:
+    driver: bridge
