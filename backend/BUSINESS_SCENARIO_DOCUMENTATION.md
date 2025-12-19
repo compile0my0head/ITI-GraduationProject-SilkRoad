@@ -298,38 +298,259 @@ Pending ? Accepted ? Shipped ? Delivered
 10. Admin rejects ? Customer notified
     - **API**: `PUT /api/orders/{orderId}/reject`
 
-#### Order Products (Line Items)
-```json
-{
-  "orderId": "order-guid",
-  "productId": "product-guid",
-  "quantity": 2,
-  "unitPrice": 129.99
-}
-```
-
-#### Frontend Requirements
-- **Order Dashboard** (pending orders counter)
-  - **Load**: `GET /api/orders?status=Pending`
-- **Order List Page** (filter by status)
-  - **Load**: `GET /api/orders` or `GET /api/orders?status={status}`
-- **Order Details Modal**
-  - **Load**: `GET /api/orders/{orderId}`
-- **Order Creation Form**
-  - **Submit**: `POST /api/orders`
-- **Accept/Reject Buttons** (for pending orders)
-  - **Accept**: `PUT /api/orders/{orderId}/accept`
-  - **Reject**: `PUT /api/orders/{orderId}/reject`
-- **Status Update Dropdown**
-  - **Update**: `PUT /api/orders/{orderId}` (with new status)
-- **Order Timeline** (status history) - future
-
 #### Critical Business Rules
 - ? Only "Pending" orders can be accepted/rejected
 - ? Orders are never deleted (soft delete for audit)
 - ? Chatbot orders always start as "Pending"
 - ? If product not found in chatbot order ? skip item, continue order
 - ? TotalPrice auto-calculated from OrderProducts
+
+---
+
+### 4.1. Order Product Management (Line Items)
+
+#### Business Scenario
+Order products represent the line items within an order. Each order product links a product to an order with specific quantity and price information. This allows tracking exactly what products were ordered, at what price, and in what quantity.
+
+#### Entity: OrderProduct
+```json
+{
+  "orderId": "order-guid",
+  "productId": "product-guid",
+  "productName": "Nike Air Max 2024",
+  "quantity": 2,
+  "unitPrice": 129.99,
+  "totalPrice": 259.98
+}
+```
+
+#### OrderProduct Workflow
+
+**When Creating an Order**:
+1. Admin selects customer
+   - **API**: `GET /api/customers` (for dropdown)
+2. Admin adds products one by one
+   - **API**: `POST /api/OrderProduct` (STORE-SCOPED)
+   - Each product added creates an OrderProduct record
+3. System tracks each line item with:
+   - Product reference
+   - Quantity ordered
+   - Unit price at time of order (locked-in price)
+4. Order total auto-calculated from all OrderProducts
+
+**Managing Order Products**:
+1. **View order items**
+   - **API**: `GET /api/OrderProduct/order/{orderId}`
+2. **Update quantity**
+   - **API**: `PUT /api/OrderProduct/{orderId}/product/{productId}`
+3. **Remove item**
+   - **API**: `DELETE /api/OrderProduct/{orderId}/product/{productId}`
+
+#### OrderProduct Properties
+- **OrderId**: Links to the parent order
+- **ProductId**: Links to the product being ordered
+- **ProductName**: Denormalized product name (for display)
+- **Quantity**: Number of units ordered
+- **UnitPrice**: Price per unit at time of order (immutable)
+- **TotalPrice**: Calculated field (Quantity × UnitPrice)
+
+#### Frontend Requirements
+- **Order Details Page**
+  - **Product List Table**
+    - Columns: Product Name, Quantity, Unit Price, Total Price
+    - **Load**: `GET /api/OrderProduct/order/{orderId}`
+  - **Add Product Button**
+    - Opens modal with product dropdown
+    - **Products API**: `GET /api/products` (for selection)
+    - **Submit**: `POST /api/OrderProduct`
+  - **Quantity Edit Input**
+    - Inline editing or modal
+    - **Update**: `PUT /api/OrderProduct/{orderId}/product/{productId}`
+  - **Remove Product Button**
+    - Confirmation dialog
+    - **Delete**: `DELETE /api/OrderProduct/{orderId}/product/{productId}`
+  - **Order Total Display**
+    - Auto-calculated sum of all line items
+    - Updates after any OrderProduct change
+
+- **Order Creation Form**
+  - **Dynamic Product Table**
+    - Add multiple products before order submission
+    - Shows running total
+  - **Product Search/Dropdown**
+    - Filter products by name
+    - Shows current price
+  - **Quantity Input** (per product)
+    - Validation: Must be > 0
+    - Default: 1
+
+#### Critical Business Rules
+- ? **Price Lock-In**: `UnitPrice` captured at order creation time
+  - Prevents retroactive price changes affecting existing orders
+  - Reflects actual price customer agreed to pay
+- ? **Duplicate Prevention**: Cannot add same product twice to an order
+  - If product already exists, update quantity instead
+  - Backend enforces this constraint
+- ? **Automatic Total Calculation**: Order `TotalPrice` = sum of all OrderProduct totals
+  - Frontend should display but not submit total
+  - Backend calculates authoritative total
+- ? **Quantity Validation**: Quantity must always be ? 1
+  - Quantity = 0 ? Use DELETE instead
+- ? **Cascade Delete**: Deleting an order ? All OrderProducts deleted
+- ? **Product Reference Integrity**: OrderProduct links to Product
+  - If product is deleted, OrderProduct keeps productName for history
+  - ProductId becomes null (soft reference)
+
+#### Business Validation Rules
+- **Order must exist** before adding products
+- **Product must exist** and belong to same store
+- **Quantity must be positive** integer (? 1)
+- **UnitPrice must be positive** decimal (? 0)
+- **Cannot modify OrderProducts** on accepted/shipped orders (business rule enforcement optional)
+
+#### API Integration Example
+
+**Add Product to Order**:
+```javascript
+const addProductToOrder = async (orderId, productId, quantity, unitPrice) => {
+  const response = await fetch('/api/OrderProduct', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Store-ID': currentStoreId,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      orderId: orderId,
+      productId: productId,
+      quantity: quantity,
+      unitPrice: unitPrice
+    })
+  });
+  return await response.json();
+};
+```
+
+**Get Order Products**:
+```javascript
+const getOrderProducts = async (orderId) => {
+  const response = await fetch(`/api/OrderProduct/order/${orderId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Store-ID': currentStoreId
+    }
+  });
+  return await response.json();
+};
+```
+
+**Update Product Quantity**:
+```javascript
+const updateProductQuantity = async (orderId, productId, newQuantity) => {
+  const response = await fetch(`/api/OrderProduct/${orderId}/product/${productId}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Store-ID': currentStoreId,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      quantity: newQuantity
+    })
+  });
+  return await response.json();
+};
+```
+
+**Remove Product from Order**:
+```javascript
+const removeProductFromOrder = async (orderId, productId) => {
+  const response = await fetch(`/api/OrderProduct/${orderId}/product/${productId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Store-ID': currentStoreId
+    }
+  });
+  return response; // 204 No Content on success
+};
+```
+
+#### Use Cases
+
+**Use Case 1: Build Order with Multiple Products**
+```
+1. Admin creates order ? POST /api/orders
+2. Admin adds Product A (qty: 2) ? POST /api/OrderProduct
+3. Admin adds Product B (qty: 1) ? POST /api/OrderProduct
+4. Admin adds Product C (qty: 5) ? POST /api/OrderProduct
+5. System calculates total: (A.price × 2) + (B.price × 1) + (C.price × 5)
+```
+
+**Use Case 2: Customer Changes Mind (Edit Order)**
+```
+1. Admin views order items ? GET /api/OrderProduct/order/{orderId}
+2. Customer wants 3 instead of 2 of Product A
+3. Admin updates quantity ? PUT /api/OrderProduct/{orderId}/product/{A}
+4. System recalculates order total
+```
+
+**Use Case 3: Remove Unwanted Item**
+```
+1. Customer decides not to buy Product C
+2. Admin views order ? GET /api/OrderProduct/order/{orderId}
+3. Admin removes Product C ? DELETE /api/OrderProduct/{orderId}/product/{C}
+4. System recalculates order total (now only A + B)
+```
+
+**Use Case 4: Price Change After Order**
+```
+1. Order created with Product A at $100
+2. Admin changes Product A price to $120
+3. Existing order still shows $100 (price locked-in)
+4. New orders will use $120 (current price)
+```
+
+#### Error Scenarios
+
+**Scenario 1: Duplicate Product**
+```
+Request: POST /api/OrderProduct
+Body: { orderId: "X", productId: "A", quantity: 2 }
+Response: 400 Bad Request
+{
+  "message": "Product A is already in order X. Use UpdateQuantity instead."
+}
+```
+
+**Scenario 2: Invalid Quantity**
+```
+Request: PUT /api/OrderProduct/{orderId}/product/{productId}
+Body: { quantity: 0 }
+Response: 400 Bad Request
+{
+  "message": "Quantity must be greater than 0."
+}
+```
+
+**Scenario 3: Product Not in Order**
+```
+Request: PUT /api/OrderProduct/{orderId}/product/{productId}
+Response: 404 Not Found
+{
+  "message": "Product {productId} not found in order {orderId}."
+}
+```
+
+**Scenario 4: Order Not Found**
+```
+Request: POST /api/OrderProduct
+Body: { orderId: "invalid-guid", productId: "A", quantity: 1 }
+Response: 404 Not Found
+{
+  "message": "Order with ID invalid-guid not found."
+}
+```
 
 ---
 

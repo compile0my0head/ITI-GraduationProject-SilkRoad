@@ -804,7 +804,7 @@ Pending ? Accepted ? Shipped ? Delivered
 **Current Method** (infer from customer PSID):
 - If `customer.psid` exists and not empty ? Likely chatbot order
 - Show "Chatbot Order" badge
-- **Note**: This is inference-based. If `orderSource` field is added to API, switch to using that instead.
+- **Note**: This is inference-based; if `orderSource` field is added, use that instead.
 
 **Implementation**:
 ```typescript
@@ -821,19 +821,109 @@ function isChatbotOrder(order: Order): boolean {
 
 #### Order Workflow
 
-##### Manual Order (Admin)
+##### Manual Order (Admin) - **CORRECTED WORKFLOW**
+
+**Current API Implementation**: Orders and OrderProducts are created **separately**.
+
+**Step-by-Step Process**:
 1. Admin selects customer
    - **API**: `GET /api/customers` (for dropdown)
-2. Admin adds products
-   - **API**: `GET /api/products` (for selection)
-3. System calculates total
-4. Order created as "Pending"
+2. Admin builds product list in UI (locally, no API calls yet)
+   - **API**: `GET /api/products` (for product selection)
+   - User adds multiple products to a temporary list
+   - Frontend calculates running total
+3. **Create Order First** (without products):
    - **API**: `POST /api/orders` (STORE-SCOPED)
-5. Admin reviews and accepts/rejects
-   - **Accept**: `PUT /api/orders/{orderId}/accept`
-   - **Reject**: `PUT /api/orders/{orderId}/reject`
+   - **Request Body**:
+   ```json
+   {
+     "customerId": "customer-guid",
+     "totalPrice": 0  // Will be updated after adding products
+   }
+   ```
+   - **Response**: Order created with Status = "Pending", totalPrice = 0
+4. **Add Products One by One**:
+   - For each product in temporary list:
+     - **API**: `POST /api/OrderProduct` (STORE-SCOPED)
+     - **Request Body**:
+     ```json
+     {
+       "orderId": "order-guid",
+       "productId": "product-guid",
+       "quantity": 2,
+       "unitPrice": 129.99
+     }
+     ```
+     - **Response**: OrderProduct created
+5. **Update Order Total** (optional, or backend calculates automatically):
+   - **API**: `PUT /api/orders/{orderId}`
+   - **Request Body**:
+   ```json
+   {
+     "totalPrice": 439.98  // Sum of all OrderProduct totals
+   }
+   ```
 
-##### Chatbot Order (from n8n)
+**Why This Design?**:
+- **Flexibility**: Admin can add/remove products before finalizing
+- **Separation of Concerns**: Order creation and product assignment are separate operations
+- **Backend Consistency**: OrderProduct table is the single source of truth for order contents
+- **Price Lock-In**: Each OrderProduct captures unit price at time of addition
+
+**Frontend Implementation**:
+```typescript
+// Step 1: Build product list locally
+const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
+
+function addProductToList(product: Product, quantity: number) {
+  setSelectedProducts(prev => [...prev, {
+    productId: product.id,
+    productName: product.productName,
+    quantity: quantity,
+    unitPrice: product.productPrice,
+    totalPrice: product.productPrice * quantity
+  }]);
+}
+
+// Step 2: Calculate total
+const orderTotal = selectedProducts.reduce((sum, p) => sum + p.totalPrice, 0);
+
+// Step 3: Create order
+async function createOrder() {
+  try {
+    // Create order with customerId and initial total (or 0)
+    const orderResponse = await api.post('/orders', {
+      customerId: selectedCustomer.id,
+      totalPrice: 0  // Will be updated after adding products
+    });
+    
+    const orderId = orderResponse.data.id;
+    
+    // Add each product to order
+    for (const product of selectedProducts) {
+      await api.post('/OrderProduct', {
+        orderId: orderId,
+        productId: product.productId,
+        quantity: product.quantity,
+        unitPrice: product.unitPrice
+      });
+    }
+    
+    // Optionally update total (or let backend calculate from OrderProducts)
+    await api.put(`/orders/${orderId}`, {
+      totalPrice: orderTotal
+    });
+    
+    showToast('Order created successfully!', 'success');
+    navigate(`/orders/${orderId}`);
+  } catch (error) {
+    showToast('Failed to create order', 'error');
+  }
+}
+```
+
+##### Chatbot Order (from n8n) - **AUTOMATIC OrderProduct Creation**
+
 **Frontend Perspective**:
 1. **Background**: Customer orders via Facebook Messenger (n8n handles conversation)
 2. **Background**: n8n extracts order details and sends to backend
@@ -841,6 +931,8 @@ function isChatbotOrder(order: Order): boolean {
    - **API**: `GET /api/orders?status=Pending`
 4. **Frontend**: Admin sees order with "Chatbot Order" badge
 5. **Frontend**: Admin reviews order details
+   - **API**: `GET /api/orders/{orderId}`
+   - **API**: `GET /api/OrderProduct/order/{orderId}` (to see line items)
 6. **Frontend**: Admin clicks "Accept" or "Reject"
    - **Accept API**: `PUT /api/orders/{orderId}/accept`
    - **Reject API**: `PUT /api/orders/{orderId}/reject`
@@ -872,11 +964,22 @@ POST /api/orders/chatbot (PUBLIC - no auth)
 }
 ```
 
-**Backend Resolves**:
-- `pageId` ? SocialPlatform ? StoreId (no frontend involvement)
-- Finds/creates customer
-- Matches products by name
-- Creates order with Status = "Pending"
+**Backend Automatically**:
+1. Resolves `pageId` ? SocialPlatform ? StoreId (no frontend involvement)
+2. Finds/creates customer by PSID or phone
+3. **Searches for products by name** (case-insensitive LIKE match):
+   - `SELECT * FROM Products WHERE StoreId = {storeId} AND ProductName LIKE '%{productName}%'`
+   - **If found**: Gets `productId` for the matched product
+   - **If not found**: Skips item, logs warning
+4. **Creates Order** with Status = "Pending", TotalPrice = sum of matched products
+5. **Creates OrderProducts** for each matched product:
+   ```sql
+   INSERT INTO OrderProducts (OrderId, ProductId, Quantity, UnitPrice)
+   VALUES ('{orderId}', '{matchedProductId}', {quantity}, {productPrice})
+   ```
+6. **Returns success response** to n8n
+
+**Key Point**: Chatbot orders **automatically create OrderProducts** based on product name matching. Frontend never handles this process.
 
 #### Order Products (Line Items)
 ```json
@@ -898,10 +1001,16 @@ POST /api/orders/chatbot (PUBLIC - no auth)
   - **Chatbot Badge**: Show if `isChatbotOrder(order) === true`
 - **Order Details Modal**
   - **Load**: `GET /api/orders/{orderId}`
-  - **Show**: Customer info, products, total price, status
+  - **Load Products**: `GET /api/OrderProduct/order/{orderId}` (to show line items)
+  - **Show**: Customer info, **product line items**, total price, status
   - **Chatbot Indicator**: Badge or icon if chatbot order
 - **Order Creation Form** (manual orders only)
-  - **Submit**: `POST /api/orders` (**NOT** `/api/orders/chatbot`)
+  - **Step 1**: Select customer
+  - **Step 2**: Add products to temporary list (local state)
+  - **Step 3**: Click "Create Order"
+    - **Create Order**: `POST /api/orders` (**NOT** `/api/orders/chatbot`)
+    - **Add Products**: Loop through products, `POST /api/OrderProduct` for each
+    - **Update Total**: `PUT /api/orders/{orderId}` (optional)
   - **CRITICAL**: Frontend creates manual orders only, never chatbot orders
 - **Accept/Reject Buttons** (for pending orders)
   - **Accept**: `PUT /api/orders/{orderId}/accept`
@@ -919,18 +1028,1022 @@ POST /api/orders/chatbot (PUBLIC - no auth)
 **Frontend Order Creation** (Manual Only):
 ```typescript
 // ? CORRECT: Manual order creation by admin
-async function createManualOrder(orderData) {
-  const response = await api.post('/orders', {
-    customerId: orderData.customerId,
-    items: orderData.items
+async function createManualOrder(customerId: string, products: SelectedProduct[]) {
+  // Step 1: Create order
+  const orderResponse = await api.post('/orders', {
+    customerId: customerId,
+    totalPrice: 0  // Will be updated after adding products
   });
-  return response.data;
+  
+  const orderId = orderResponse.data.id;
+  
+  // Step 2: Add products to order
+  for (const product of products) {
+    await api.post('/OrderProduct', {
+      orderId: orderId,
+      productId: product.productId,
+      quantity: product.quantity,
+      unitPrice: product.unitPrice
+    });
+  }
+  
+  // Step 3: Calculate and update total
+  const total = products.reduce((sum, p) => sum + (p.unitPrice * p.quantity), 0);
+  await api.put(`/orders/${orderId}`, {
+    totalPrice: total
+  });
+  
+  return orderId;
 }
 
 // ? WRONG: Never call chatbot endpoint from frontend
 async function createChatbotOrder(orderData) {
   // NEVER DO THIS - This endpoint is for n8n only!
   await api.post('/orders/chatbot', orderData);
+}
+```
+
+#### Critical Business Rules - **UPDATED**
+
+##### 1. Manual Orders: Separate Order and OrderProduct Creation
+**Rule**: Manual orders are created in **two steps**:
+1. Create Order (with customerId, totalPrice = 0)
+2. Add OrderProducts (one by one, with productId, quantity, unitPrice)
+
+**Why**:
+- **Flexibility**: Admin can add/remove products dynamically
+- **Price Lock-In**: Each product's price is captured at time of addition
+- **Database Design**: OrderProduct table is the source of truth for order contents
+
+**Frontend Implication**:
+- Build product list in UI first (local state)
+- Create order on submit
+- Loop through products and create OrderProduct records
+- Update order total after all products added
+
+##### 2. Chatbot Orders: Automatic OrderProduct Creation
+**Rule**: Chatbot orders **automatically create OrderProducts** during order processing.
+
+**Why**:
+- **n8n sends complete order**: All products already determined by chatbot conversation
+- **Product Name Matching**: Backend searches for products by name, gets productId
+- **Single Transaction**: Order + OrderProducts created together
+
+**Backend Process**:
+```
+1. n8n sends: { items: [{ productName: "Nike Air Max", quantity: 2 }] }
+2. Backend searches: SELECT * FROM Products WHERE ProductName LIKE '%Nike Air Max%' AND StoreId = {storeId}
+3. Backend gets: productId = "abc-123", productPrice = 129.99
+4. Backend creates Order: { customerId, totalPrice: 259.98, status: "Pending" }
+5. Backend creates OrderProduct: { orderId, productId: "abc-123", quantity: 2, unitPrice: 129.99 }
+```
+
+**Frontend Implication**:
+- Chatbot orders arrive fully formed with OrderProducts already created
+- Frontend only views and manages order status (Accept/Reject)
+- Frontend never creates OrderProducts for chatbot orders
+
+---
+
+### 4.1. Order Product Management (Line Items)
+
+#### Business Scenario
+Order products represent the **line items** within an order. Each order product links a product to an order with specific quantity and price information. This allows precise tracking of:
+- What products were ordered
+- At what price (locked-in at order time)
+- In what quantity
+- Line-by-line order composition
+
+**Why This Matters**:
+- **Price Lock-In**: Unit price captured at order creation prevents retroactive price changes
+- **Order Auditing**: Complete history of what was sold and at what price
+- **Inventory Tracking**: Know exactly which products were included in each order
+- **Customer Service**: Show customers exact breakdown of their order
+
+#### Entity: OrderProduct
+```json
+{
+  "orderId": "order-guid",
+  "productId": "product-guid",
+  "productName": "Nike Air Max 2024",
+  "quantity": 2,
+  "unitPrice": 129.99,
+  "totalPrice": 259.98
+}
+```
+
+**Field Descriptions**:
+- **orderId**: Links to parent Order entity
+- **productId**: Links to Product entity
+- **productName**: Denormalized for display (preserves product name even if product is deleted)
+- **quantity**: Number of units ordered (minimum: 1)
+- **unitPrice**: Price per unit **at time of order** (immutable after creation)
+- **totalPrice**: Calculated field (`quantity × unitPrice`) - **read-only**, backend calculates
+
+#### OrderProduct Workflow
+
+**When Creating a Manual Order** (Admin):
+1. Admin clicks "Create Order" button
+2. Order creation form opens
+3. Admin selects customer from dropdown
+   - **API**: `GET /api/customers` (STORE-SCOPED)
+4. Admin adds products **one by one**:
+   - Click "+ Add Product" button
+   - Select product from dropdown
+     - **API**: `GET /api/products` (STORE-SCOPED)
+   - Enter quantity
+   - Unit price auto-filled from product's current price
+   - **Submit**: `POST /api/OrderProduct` (STORE-SCOPED)
+5. Each product added creates an **OrderProduct** record
+6. System displays running total (sum of all line items)
+7. Admin submits order
+   - **API**: `POST /api/orders` (STORE-SCOPED)
+8. Order created with Status = "Pending"
+
+**Managing Existing Order Products**:
+1. **View order items**:
+   - **API**: `GET /api/OrderProduct/order/{orderId}` (STORE-SCOPED)
+   - Returns array of all products in order
+2. **Update product quantity**:
+   - Admin clicks "Edit" on line item
+   - Changes quantity
+   - **API**: `PUT /api/OrderProduct/{orderId}/product/{productId}` (STORE-SCOPED)
+   - Order total recalculates automatically
+3. **Remove item from order**:
+   - Admin clicks "Remove" on line item
+   - Confirmation dialog appears
+   - **API**: `DELETE /api/OrderProduct/{orderId}/product/{productId}` (STORE-SCOPED)
+   - Order total recalculates automatically
+
+#### API Endpoints (STORE-SCOPED)
+
+**?? ROUTE NOTE**: Current controller uses `Route("api/[controller]")` which results in:
+- **Current Route**: `/api/OrderProduct` (PascalCase - controller name)
+- **Convention**: Should be `/api/order-products` (kebab-case plural)
+- **Documentation**: Using current route until fixed
+
+##### GET `/api/OrderProduct/order/{orderId}` - Get All Products in Order
+
+**Purpose**: Retrieve all line items (products) for a specific order  
+**Auth**: Required  
+**Headers**: `X-Store-ID: {storeId}`  
+**URL Params**: `orderId` (guid)
+
+**Response 200**:
+```json
+[
+  {
+    "orderId": "order-guid",
+    "productId": "product-guid-1",
+    "productName": "Nike Air Max 2024",
+    "quantity": 2,
+    "unitPrice": 129.99,
+    "totalPrice": 259.98
+  },
+  {
+    "orderId": "order-guid",
+    "productId": "product-guid-2",
+    "productName": "Adidas Ultraboost",
+    "quantity": 1,
+    "unitPrice": 180.00,
+    "totalPrice": 180.00
+  }
+]
+```
+
+**Response 404**: Order not found
+
+**Frontend Usage**:
+```typescript
+async function getOrderProducts(orderId: string) {
+  const response = await api.get(`/OrderProduct/order/${orderId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Store-ID': currentStoreId
+    }
+  });
+  return response.data; // Array of OrderProductDto
+}
+```
+
+---
+
+##### POST `/api/OrderProduct` - Add Product to Order
+
+**Purpose**: Add a single product line item to an existing order  
+**Auth**: Required  
+**Headers**: `X-Store-ID: {storeId}`
+
+**Request Body**:
+```json
+{
+  "orderId": "order-guid",
+  "productId": "product-guid",
+  "quantity": 2,
+  "unitPrice": 129.99
+}
+```
+
+**Validation Rules**:
+- ? `orderId`: Must exist
+- ? `productId`: Must exist and belong to same store
+- ? `quantity`: Must be ? 1
+- ? `unitPrice`: Must be ? 0
+- ? Cannot add same product twice (use update quantity instead)
+
+**Response 201**: Created OrderProductDto  
+**Response 400**: Validation error or duplicate product  
+**Response 404**: Order or product not found
+
+**Example Success Response**:
+```json
+{
+  "orderId": "order-guid",
+  "productId": "product-guid",
+  "productName": "Nike Air Max 2024",
+  "quantity": 2,
+  "unitPrice": 129.99,
+  "totalPrice": 259.98
+}
+```
+
+**Example Error (Duplicate Product)**:
+```json
+{
+  "message": "Product {productId} is already in order {orderId}. Use UpdateQuantity instead."
+}
+```
+
+**Frontend Usage**:
+```typescript
+async function addProductToOrder(orderProduct: AddProductToOrderRequest) {
+  const response = await api.post('/OrderProduct', orderProduct, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Store-ID': currentStoreId,
+      'Content-Type': 'application/json'
+    }
+  });
+  return response.data;
+}
+```
+
+---
+
+##### PUT `/api/OrderProduct/{orderId}/product/{productId}` - Update Product Quantity
+
+**Purpose**: Update the quantity of a product already in the order  
+**Auth**: Required  
+**Headers**: `X-Store-ID: {storeId}`  
+**URL Params**: 
+- `orderId` (guid)
+- `productId` (guid)
+
+**Request Body**:
+```json
+{
+  "quantity": 5
+}
+```
+
+**Validation Rules**:
+- ? `quantity`: Must be ? 1
+- ? If quantity = 0, use DELETE endpoint instead
+
+**Response 200**: Updated OrderProductDto with new quantity and recalculated total  
+**Response 404**: Product not found in order  
+**Response 400**: Invalid quantity (e.g., quantity = 0)
+
+**Example Success Response**:
+```json
+{
+  "orderId": "order-guid",
+  "productId": "product-guid",
+  "productName": "Nike Air Max 2024",
+  "quantity": 5,
+  "unitPrice": 129.99,
+  "totalPrice": 649.95
+}
+```
+
+**Frontend Usage**:
+```typescript
+async function updateProductQuantity(orderId: string, productId: string, quantity: number) {
+  const response = await api.put(
+    `/OrderProduct/${orderId}/product/${productId}`,
+    { quantity },
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-Store-ID': currentStoreId,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  return response.data;
+}
+```
+
+---
+
+##### DELETE `/api/OrderProduct/{orderId}/product/{productId}` - Remove Product from Order
+
+**Purpose**: Remove a product line item from the order  
+**Auth**: Required  
+**Headers**: `X-Store-ID: {storeId}`  
+**URL Params**: 
+- `orderId` (guid)
+- `productId` (guid)
+
+**Response 204**: No content (success)  
+**Response 404**: Product not found in order
+
+**Frontend Usage**:
+```typescript
+async function removeProductFromOrder(orderId: string, productId: string) {
+  await api.delete(`/OrderProduct/${orderId}/product/${productId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Store-ID': currentStoreId
+    }
+  });
+  // 204 No Content - no response body
+}
+```
+
+---
+
+#### Frontend Requirements
+
+##### Order Details Page
+```
+???????????????????????????????????????????????????
+? Order #12345                                   [Edit] ?
+???????????????????????????????????????????????????
+? Customer: John Doe                                   ?
+? Status: Pending                      [Accept][Reject]?
+? Created: Dec 19, 2024 10:30 AM                      ?
+???????????????????????????????????????????????????
+? Products                                             ?
+? ???????????????????????????????????????????????????????     ?
+? ? Product Name       ? Qty ? Price ? Total      ?   ?
+? ???????????????????????????????????????????????????????   ?
+? ? Nike Air Max 2024  ? 2   ? $129.99? $259.98 [X]?   ?
+? ? Adidas Ultraboost  ? 1   ? $180.00? $180.00 [X]?   ?
+? ???????????????????????????????????????????????????????   ?
+? ? Order Total                       $439.98       ?   ?
+? ???????????????????????????????????????????????????????   ?
+?                                                      ?
+? [+ Add Product]                                      ?
+???????????????????????????????????????????????????
+```
+
+**Components Needed**:
+1. **Product Table**:
+   - Columns: Product Name, Quantity (editable), Unit Price (read-only), Total Price (calculated), Actions (remove button)
+   - **Load**: `GET /api/OrderProduct/order/{orderId}`
+   - **Inline Edit**: Quantity input with save/cancel buttons
+   - **Remove Button**: Confirmation dialog ? DELETE request
+
+2. **Add Product Button**:
+   - Opens modal/dropdown
+   - Product search/dropdown from `GET /api/products`
+   - Quantity input (default: 1)
+   - Unit price auto-filled (read-only)
+   - **Submit**: `POST /api/OrderProduct`
+
+3. **Order Total Display**:
+   - **Calculated**: Sum of all `orderProduct.totalPrice`
+   - **Updates automatically** after add/update/delete
+   - **Backend calculates** authoritative total
+
+4. **Quantity Edit**:
+   - **Inline**: Click quantity ? Input field appears
+   - **Save**: `PUT /api/OrderProduct/{orderId}/product/{productId}`
+   - **Validation**: Must be ? 1
+   - **Cancel**: Revert to original value
+
+5. **Remove Product**:
+   - **Button**: "X" icon or "Remove" button
+   - **Confirmation**: "Remove {productName} from order?"
+   - **Submit**: `DELETE /api/OrderProduct/{orderId}/product/{productId}`
+
+##### Order Creation Form (Manual Orders)
+```
+???????????????????????????????????????????????????
+? Create Order                                    [X] ?
+???????????????????????????????????????????????????
+? Customer: [Dropdown: Select customer]              ?
+?                                                     ?
+? Products:                                           ?
+? ???????????????????????????????????????????       ?
+? ? Product              ? Qty ? Unit Price ? Total??
+? ???????????????????????????????????????????     ?
+? ? Nike Air Max 2024    ? 2   ? $129.99    ? $259.98?
+? ? Adidas Ultraboost    ? 1   ? $180.00    ? $180.00?
+? ???????????????????????????????????????????     ?
+? ? Order Total                           $439.98   ??
+? ???????????????????????????????????????????       ?
+?                                                     ?
+? [+ Add Product]                                     ?
+?                                                     ?
+? [Cancel]                            [Create Order]  ?
+???????????????????????????????????????????????????
+```
+
+**Workflow**:
+1. User selects customer
+2. User clicks "+ Add Product"
+3. Product selection modal opens:
+   - Search/filter products
+   - Select product
+   - Enter quantity
+   - Preview: "{productName} × {quantity} = ${total}"
+4. User clicks "Add"
+5. Product added to table
+6. User repeats for more products
+7. Running total updates
+8. User clicks "Create Order"
+9. **Submit**: `POST /api/orders` with final total
+
+**Note**: In this flow, OrderProducts are added **after** order creation. Alternative workflow:
+1. User builds product list in UI (no API calls yet)
+2. User clicks "Create Order"
+3. Backend creates Order
+4. Backend loops through products and creates OrderProducts
+5. Backend calculates final total
+
+**Recommended Approach**: Build product list in UI, submit all at once with order creation.
+
+---
+
+#### Critical Business Rules
+
+##### 1. Price Lock-In Rule
+**Rule**: `unitPrice` captured at order creation time is **immutable**.
+
+**Why**: 
+- Prevents retroactive price changes from affecting existing orders
+- Reflects actual price customer agreed to pay
+- Ensures order history integrity
+
+**Example**:
+```
+1. Order created: Product A at $100, Quantity: 2, Total: $200
+2. Product A price changed to $120
+3. Existing order still shows $100 (locked-in price)
+4. New orders will use $120 (current price)
+```
+
+**Frontend Implication**:
+- When adding product to order, fetch current product price
+- Display as "Unit Price (current)" to user
+- Once added, unit price is locked and never changes
+
+---
+
+##### 2. Duplicate Prevention Rule
+**Rule**: Cannot add same product twice to an order.
+
+**Why**: 
+- Prevents confusion with multiple line items for same product
+- Enforces single line item per product (update quantity instead)
+
+**Behavior**:
+- **Attempt**: `POST /api/OrderProduct` with duplicate productId
+- **Response**: `400 Bad Request` with message: "Product already in order. Use UpdateQuantity instead."
+
+**Frontend Implication**:
+- Before adding product, check if already in order
+- If exists, show message: "This product is already in the order. Increase quantity instead?"
+- Redirect to quantity update
+
+**Implementation**:
+```typescript
+function canAddProduct(orderId: string, productId: string, orderProducts: OrderProduct[]): boolean {
+  return !orderProducts.some(op => op.productId === productId);
+}
+
+async function addOrUpdateProduct(orderId: string, productId: string, quantity: number) {
+  const existing = orderProducts.find(op => op.productId === productId);
+  
+  if (existing) {
+    // Update existing
+    await updateProductQuantity(orderId, productId, existing.quantity + quantity);
+  } else {
+    // Add new
+    await addProductToOrder({ orderId, productId, quantity, unitPrice });
+  }
+}
+```
+
+---
+
+##### 3. Automatic Total Calculation Rule
+**Rule**: Order `totalPrice` = sum of all OrderProduct `totalPrice` values.
+
+**Why**:
+- Backend calculates authoritative total
+- Frontend displays but doesn't submit total
+- Prevents tampering with order total
+
+**Calculation**:
+```
+OrderProduct 1: Quantity: 2, UnitPrice: $129.99 ? Total: $259.98
+OrderProduct 2: Quantity: 1, UnitPrice: $180.00 ? Total: $180.00
+-----------------------------------------------------------
+Order Total: $439.98
+```
+
+**Frontend Implication**:
+- Display calculated total for user preview
+- **Do not** include total in order creation request
+- Backend recalculates from OrderProducts
+
+**API Behavior**:
+```typescript
+// ? CORRECT: Backend calculates total
+POST /api/orders
+{
+  customerId: "customer-guid"
+  // No totalPrice field - backend calculates
+}
+
+// ? WRONG: Frontend sends total
+POST /api/orders
+{
+  customerId: "customer-guid",
+  totalPrice: 439.98 // Ignored by backend
+}
+```
+
+---
+
+##### 4. Quantity Validation Rule
+**Rule**: Quantity must always be ? 1.
+
+**Why**:
+- Quantity = 0 is invalid (use DELETE instead)
+- Negative quantities are nonsensical
+
+**Validation**:
+- **Frontend**: Disable submit if quantity < 1
+- **Backend**: Returns `400 Bad Request` if quantity ? 0
+
+**Frontend Implementation**:
+```tsx
+<input
+  type="number"
+  min="1"
+  value={quantity}
+  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value)))}
+/>
+```
+
+---
+
+##### 5. Cascade Delete Rule
+**Rule**: Deleting an order ? All OrderProducts deleted.
+
+**Why**:
+- OrderProducts cannot exist without parent order
+- Database cascade delete enforced
+
+**Frontend Implication**:
+- When deleting order, no need to manually delete OrderProducts
+- Backend handles cascade automatically
+
+---
+
+##### 6. Product Reference Integrity Rule
+**Rule**: OrderProduct links to Product, but keeps `productName` for history.
+
+**Why**:
+- If product is deleted, OrderProduct preserves product name
+- ProductId may become null (soft reference)
+- Order history remains intact
+
+**Behavior**:
+```
+1. Order created with "Nike Air Max 2024" (productId: abc-123)
+2. Product "Nike Air Max 2024" deleted by admin
+3. OrderProduct still shows "Nike Air Max 2024" in order history
+4. ProductId may become null or remain (depends on soft delete implementation)
+```
+
+**Frontend Implication**:
+- Always display `productName` (not product.name)
+- If productId is null, show "(Product Deleted)" badge
+- Order history always readable
+
+---
+
+#### Use Cases
+
+##### Use Case 1: Build Order with Multiple Products
+
+**Scenario**: Admin creates order for customer with 3 products.
+
+**Steps**:
+1. Admin: Create order ? `POST /api/orders` (customerId: "customer-guid")
+   - Response: `{ id: "order-guid", status: "Pending", totalPrice: 0 }`
+2. Admin: Add Product A (qty: 2) ? `POST /api/OrderProduct`
+   - Request: `{ orderId: "order-guid", productId: "product-A", quantity: 2, unitPrice: 129.99 }`
+   - Response: `{ ..., totalPrice: 259.98 }`
+3. Admin: Add Product B (qty: 1) ? `POST /api/OrderProduct`
+   - Request: `{ orderId: "order-guid", productId: "product-B", quantity: 1, unitPrice: 180.00 }`
+   - Response: `{ ..., totalPrice: 180.00 }`
+4. Admin: Add Product C (qty: 5) ? `POST /api/OrderProduct`
+   - Request: `{ orderId: "order-guid", productId: "product-C", quantity: 5, unitPrice: 45.00 }`
+   - Response: `{ ..., totalPrice: 225.00 }`
+5. System: Order total = 259.98 + 180.00 + 225.00 = **$664.98**
+
+**Result**:
+- Order created with 3 line items
+- Total price auto-calculated by backend
+- Admin views order details with full breakdown
+
+---
+
+##### Use Case 2: Customer Changes Mind (Edit Order)
+
+**Scenario**: Customer calls to change quantity after order placed.
+
+**Steps**:
+1. Admin: View order ? `GET /api/OrderProduct/order/{orderId}`
+   - Response: Array of 3 products
+2. Customer: "Change Product A from 2 to 3"
+3. Admin: Update quantity ? `PUT /api/OrderProduct/{orderId}/product/{productA}`
+   - Request: `{ quantity: 3 }`
+   - Response: `{ ..., quantity: 3, totalPrice: 389.97 }`
+4. System: Order total recalculates = 389.97 + 180.00 + 225.00 = **$794.97**
+
+**Result**:
+- Quantity updated
+- Line total recalculated
+- Order total recalculated
+- Customer charged correct amount
+
+---
+
+##### Use Case 3: Remove Unwanted Item
+
+**Scenario**: Customer decides not to buy Product C.
+
+**Steps**:
+1. Admin: View order ? `GET /api/OrderProduct/order/{orderId}`
+2. Customer: "Remove Product C from order"
+3. Admin: Click "Remove" ? Confirmation dialog
+4. Admin: Confirm ? `DELETE /api/OrderProduct/{orderId}/product/{productC}`
+   - Response: `204 No Content`
+5. System: Order total recalculates = 389.97 + 180.00 = **$569.97**
+
+**Result**:
+- Product C removed from order
+- Order total updated
+- Customer charged for 2 products only
+
+---
+
+##### Use Case 4: Price Change After Order
+
+**Scenario**: Admin changes product price, existing orders unaffected.
+
+**Steps**:
+1. **Before**: Order created with Product A at $100, Quantity: 2, Total: $200
+2. **Admin Action**: Change Product A price to $120
+3. **Existing Order**: Still shows $100 (locked-in price)
+   - `GET /api/OrderProduct/order/{orderId}` ? `{ ..., unitPrice: 100.00, totalPrice: 200.00 }`
+4. **New Order**: Uses $120 (current price)
+   - `POST /api/OrderProduct` ? `{ ..., unitPrice: 120.00 }`
+
+**Result**:
+- Historical data integrity preserved
+- Existing orders not affected by price changes
+- New orders use current pricing
+
+---
+
+#### Error Scenarios
+
+##### Scenario 1: Duplicate Product
+
+**Request**:
+```http
+POST /api/OrderProduct
+{
+  "orderId": "order-guid",
+  "productId": "product-A",
+  "quantity": 2,
+  "unitPrice": 129.99
+}
+```
+
+**Response 400**:
+```json
+{
+  "message": "Product {productId} is already in order {orderId}. Use UpdateQuantity instead."
+}
+```
+
+**Frontend Handling**:
+```typescript
+try {
+  await addProductToOrder(orderProduct);
+} catch (error) {
+  if (error.response?.status === 400 && error.response.data.message.includes('already in order')) {
+    showToast('Product already in order. Updating quantity instead...', 'info');
+    await updateProductQuantity(orderId, productId, currentQty + newQty);
+  }
+}
+```
+
+---
+
+##### Scenario 2: Invalid Quantity (Zero)
+
+**Request**:
+```http
+PUT /api/OrderProduct/{orderId}/product/{productId}
+{
+  "quantity": 0
+}
+```
+
+**Response 400**:
+```json
+{
+  "message": "Quantity must be greater than 0."
+}
+```
+
+**Frontend Handling**:
+- **Validation**: Disable submit if quantity ? 0
+- **Alternative**: If user sets quantity to 0, show: "Remove this product instead?"
+
+---
+
+##### Scenario 3: Product Not in Order
+
+**Request**:
+```http
+PUT /api/OrderProduct/{orderId}/product/{productId}
+```
+
+**Response 404**:
+```json
+{
+  "message": "Product {productId} not found in order {orderId}."
+}
+```
+
+**Frontend Handling**:
+```typescript
+try {
+  await updateProductQuantity(orderId, productId, quantity);
+} catch (error) {
+  if (error.response?.status === 404) {
+    showToast('Product not found in order. Refreshing...', 'warning');
+    await refreshOrderProducts(orderId);
+  }
+}
+```
+
+---
+
+##### Scenario 4: Order Not Found
+
+**Request**:
+```http
+POST /api/OrderProduct
+{
+  "orderId": "invalid-guid",
+  "productId": "product-A",
+  "quantity": 1,
+  "unitPrice": 129.99
+}
+```
+
+**Response 404**:
+```json
+{
+  "message": "Order with ID invalid-guid not found."
+}
+```
+
+**Frontend Handling**:
+- Unlikely scenario (order deleted while adding products)
+- Redirect to orders list with error message
+
+---
+
+##### Scenario 5: Product Not Found
+
+**Request**:
+```http
+POST /api/OrderProduct
+{
+  "orderId": "order-guid",
+  "productId": "invalid-product-guid",
+  "quantity": 1,
+  "unitPrice": 129.99
+}
+```
+
+**Response 404**:
+```json
+{
+  "message": "Product with ID invalid-product-guid not found."
+}
+```
+
+**Frontend Handling**:
+- Refresh product list
+- Show error: "Product not found. It may have been deleted."
+
+---
+
+#### Complete Frontend Implementation Example
+
+```typescript
+// ============ OrderProduct Service ============
+
+interface OrderProduct {
+  orderId: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number; // Read-only, calculated by backend
+}
+
+interface AddProductToOrderRequest {
+  orderId: string;
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+interface UpdateOrderProductQuantityRequest {
+  quantity: number;
+}
+
+class OrderProductService {
+  private apiUrl = '/api/OrderProduct'; // Current route
+
+  async getOrderProducts(orderId: string): Promise<OrderProduct[]> {
+    const response = await api.get(`${this.apiUrl}/order/${orderId}`, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+        'X-Store-ID': getCurrentStoreId()
+      }
+    });
+    return response.data;
+  }
+
+  async addProductToOrder(request: AddProductToOrderRequest): Promise<OrderProduct> {
+    const response = await api.post(this.apiUrl, request, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+        'X-Store-ID': getCurrentStoreId(),
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  }
+
+  async updateProductQuantity(
+    orderId: string,
+    productId: string,
+    quantity: number
+  ): Promise<OrderProduct> {
+    const response = await api.put(
+      `${this.apiUrl}/${orderId}/product/${productId}`,
+      { quantity },
+      {
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'X-Store-ID': getCurrentStoreId(),
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  }
+
+  async removeProductFromOrder(orderId: string, productId: string): Promise<void> {
+    await api.delete(`${this.apiUrl}/${orderId}/product/${productId}`, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+        'X-Store-ID': getCurrentStoreId()
+      }
+    });
+  }
+
+  calculateOrderTotal(orderProducts: OrderProduct[]): number {
+    return orderProducts.reduce((sum, op) => sum + op.totalPrice, 0);
+  }
+}
+
+// ============ React Component Example ============
+
+function OrderDetailsPage({ orderId }: { orderId: string }) {
+  const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const orderProductService = new OrderProductService();
+
+  useEffect(() => {
+    loadOrderProducts();
+  }, [orderId]);
+
+  async function loadOrderProducts() {
+    setLoading(true);
+    try {
+      const products = await orderProductService.getOrderProducts(orderId);
+      setOrderProducts(products);
+    } catch (error) {
+      showToast('Failed to load order products', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleQuantityUpdate(productId: string, newQuantity: number) {
+    try {
+      const updated = await orderProductService.updateProductQuantity(
+        orderId,
+        productId,
+        newQuantity
+      );
+      setOrderProducts(prev =>
+        prev.map(op => (op.productId === productId ? updated : op))
+      );
+      showToast('Quantity updated', 'success');
+    } catch (error) {
+      showToast('Failed to update quantity', 'error');
+    }
+  }
+
+  async function handleRemoveProduct(productId: string) {
+    if (!confirm('Remove this product from order?')) return;
+
+    try {
+      await orderProductService.removeProductFromOrder(orderId, productId);
+      setOrderProducts(prev => prev.filter(op => op.productId !== productId));
+      showToast('Product removed', 'success');
+    } catch (error) {
+      showToast('Failed to remove product', 'error');
+    }
+  }
+
+  const orderTotal = orderProductService.calculateOrderTotal(orderProducts);
+
+  return (
+    <div>
+      <h2>Order Products</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orderProducts.map(op => (
+            <tr key={op.productId}>
+              <td>{op.productName}</td>
+              <td>
+                <input
+                  type="number"
+                  min="1"
+                  value={op.quantity}
+                  onChange={(e) => handleQuantityUpdate(op.productId, parseInt(e.target.value))}
+                />
+              </td>
+              <td>${op.unitPrice.toFixed(2)}</td>
+              <td>${op.totalPrice.toFixed(2)}</td>
+              <td>
+                <button onClick={() => handleRemoveProduct(op.productId)}>
+                  Remove
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={3}><strong>Order Total:</strong></td>
+            <td><strong>${orderTotal.toFixed(2)}</strong></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+      <button onClick={() => {/* Open add product modal */}}>+ Add Product</button>
+    </div>
+  );
 }
 ```
 
@@ -1153,7 +2266,7 @@ Store owner connects their social media accounts to enable automated posting.
 - **Campaign Post Publishing**: Auto-post to connected accounts (Hangfire job)
 - **Chatbot Order Resolution**: Facebook Page ID ? Store ID mapping (backend only)
 
-#### Frontend Requirements
+#### Frontend Requirements (Placeholder)
 - **Platform List Page**
   - **Load**: `GET /api/social-platforms` (STORE-SCOPED) - *API needs implementation*
   - **Alternative**: Use `GET /api/social-platforms/connected` for now - *NOT YET IMPLEMENTED*
@@ -1166,7 +2279,7 @@ Store owner connects their social media accounts to enable automated posting.
   - Connected: Green, Disconnected: Gray
 - **Disconnect/Reconnect Actions**
   - **Disconnect**: `PUT /api/social-platforms/{connectionId}/disconnect`
-- **Platform Dropdown** (for available platforms)
+- ** Platform Dropdown** (for available platforms)
   - **API**: `GET /api/social-platforms/available-platforms` (GLOBAL)
   - **Returns**: All platform types (Facebook, Instagram, TikTok, YouTube)
   - **Note**: Only Facebook is functional currently
@@ -1238,13 +2351,13 @@ Store owner invites team members to help manage the store with different permiss
 
 ---
 
-### 9. Chatbot Integration (n8n) - CORRECTED
+## ?? Chatbot Integration (n8n) - CORRECTED
 
 ...existing code...
 
 ---
 
-### 10. Automation & Background Jobs
+## ?? Automation & Background Jobs
 
 ...existing code...
 
@@ -1404,268 +2517,3 @@ Store owner invites team members to help manage the store with different permiss
 **Frontend Workaround**: Show only Facebook connection status for now
 
 ---
-
-## ?? User Stories & Scenarios
-
-### Store Owner Journey
-
-**Day 1: Setup**
-1. Register account ? JWT token stored
-2. **Redirected to homepage** ? No stores yet
-3. See "Start a Store Now" empty state
-4. Click "Create Your First Store" ? Modal opens
-5. Create first store "Fashion Hub" ? Store ID stored
-6. Click store card ? Redirected to `/dashboard`
-7. Add 10 products ? Auto-embedding to n8n
-8. Connect Facebook page ? OAuth flow
-9. Create first campaign (Draft) ? Add 3 posts ? Schedule
-
-**Day 2: First Sales**
-1. Customer orders via Facebook Messenger (n8n handles)
-2. n8n sends order to `/api/orders/chatbot`
-3. Order appears in pending orders widget (frontend polls)
-4. Admin reviews order ? Clicks "Accept"
-5. Backend notifies n8n ? n8n notifies customer
-
-**Day 3: Marketing**
-1. Create new campaign "Summer Sale" (Draft)
-2. Assign featured product
-3. Add 5 scheduled posts (**only Facebook platform available**)
-4. Click "Publish Now" ? Posts publish immediately
-5. Hangfire job processes posts
-6. Campaign stage ? "Published"
-
-**Day 7: Scaling**
-1. Homepage shows 3 owned stores
-2. Click "+ New Store" ? Create "Tech Store"
-3. Switch between stores via header dropdown
-4. Add 50 more products to each store
-5. Create 3 more campaigns per store
-6. *(Future)* Connect Instagram when available
-7. *(Placeholder)* See teams on homepage (disabled)
-
-### Customer Journey (Chatbot)
-
-**Ordering via Messenger** (n8n perspective):
-1. Customer: "I want to order Nike shoes"
-2. n8n Bot: "What size?"
-3. Customer: "Size 10, quantity 2"
-4. n8n Bot: "What's your phone and address?"
-5. Customer provides details
-6. n8n: Sends order to `/api/orders/chatbot`
-7. n8n Bot: "Order placed! Order ID: XYZ123. Total: $259.98"
-8. *[Admin accepts via frontend]*
-9. n8n Bot: "Your order is confirmed! Tracking: ..."
-
----
-
-## ?? Business Metrics & Analytics (Future)
-
-### Key Performance Indicators (KPIs)
-
-**Sales Metrics**:
-- Total orders (by status)
-- Revenue (today, week, month)
-- Average order value
-- Top-selling products
-
-**Marketing Metrics**:
-- Active campaigns
-- Posts scheduled/published
-- Social media reach (future)
-- Campaign ROI (future)
-
-**Operational Metrics**:
-- Pending orders count
-- Order processing time
-- Product catalog size
-- Customer acquisition rate
-
-### Dashboard Widgets (Future)
-
-1. **Revenue Chart** (line chart, 30 days)
-2. **Orders by Status** (pie chart)
-3. **Top Products** (bar chart)
-4. **Recent Orders** (table)
-5. **Pending Orders Alert** (badge - **IMPLEMENTED**)
-
----
-
-## ?? Future Enhancements
-
-### Phase 2 Features
-- [ ] Mobile app (React Native)
-- [ ] Customer self-service portal
-- [ ] Inventory management
-- [ ] Multi-currency support
-- [ ] Shipping integrations
-- [ ] Payment gateway integration
-- [ ] **Team collaboration** (complete implementation)
-
-### Phase 3 Features
-- [ ] Advanced analytics dashboard
-- [ ] AI-powered product recommendations
-- [ ] Email marketing automation
-- [ ] SMS notifications
-- [ ] WhatsApp integration
-- [ ] Multi-language support
-
----
-
-## ?? Integration Partners
-
-### Current Integrations
-- **n8n**: Workflow automation (chatbot conversation handling, product embedding)
-- **Facebook**: OAuth, Graph API (posts, page management)
-
-### Planned Integrations
-- **Instagram**: Business API
-- **TikTok**: For Business
-- **YouTube**: Data API
-- **Stripe**: Payment processing
-- **SendGrid**: Email delivery
-- **Twilio**: SMS notifications
-
----
-
-## ?? Technical Stack Recommendations
-
-### Frontend Technology Stack
-- **Framework**: React 18+ or Next.js 14+
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **State Management**: React Context API + React Query (TanStack Query)
-- **Forms**: React Hook Form
-- **Charts**: Recharts or Chart.js
-- **Date Pickers**: react-datepicker
-- **Tables**: TanStack Table (react-table)
-- **HTTP Client**: Axios or Fetch API
-- **Routing**: React Router v6
-- **Internationalization**: react-i18next or next-i18next (for Arabic/English)
-- **RTL Support**: CSS logical properties, direction context
-
-### Component Libraries (Optional)
-- **Ant Design** - Enterprise UI components (supports RTL)
-- **Material-UI** - Google Material Design (supports RTL)
-- **Chakra UI** - Accessible component library (supports RTL)
-- **Shadcn/ui** - Unstyled, customizable components
-
----
-
-## ?? Design System Guidelines
-
-### Color Palette
-- **Primary**: Blue (#2563eb) - Actions, links
-- **Success**: Green (#16a34a) - Confirmations
-- **Warning**: Orange (#f59e0b) - Alerts
-- **Danger**: Red (#dc2626) - Errors
-- **Info**: Cyan (#06b6d4) - Information
-
-### Typography
-- **Headers**: Inter or Poppins (bold)
-- **Body**: Inter or System UI
-- **Monospace**: Fira Code (for IDs, codes)
-- **Arabic Font**: Cairo, Tajawal, or Noto Sans Arabic
-
-### Status Colors
-- **Pending**: Yellow (#fbbf24)
-- **Accepted**: Blue (#3b82f6)
-- **Shipped**: Purple (#8b5cf6)
-- **Delivered**: Green (#10b981)
-- **Rejected**: Red (#ef4444)
-- **Cancelled**: Gray (#6b7280)
-
-### Bilingual Support (Arabic/English)
-- **Language Switcher**: Dropdown in navbar (?? EN ? / ?? AR ?)
-- **RTL Layout**: Entire UI flips for Arabic (flexbox `row-reverse`, text alignment)
-- **LTR Layout**: Default for English
-- **Icons**: Remain logically positioned (e.g., chevrons flip direction)
-- **Text Alignment**: Left for English, right for Arabic
-- **Date Formats**: Locale-aware (e.g., "Dec 19, 2024" vs "?? ?????? ????")
-
-### Design Principles
-- **Professional**: Clean, modern, business-appropriate
-- **Alive**: Smooth animations, hover effects, transitions
-- **Elegant**: Good spacing, subtle shadows, balanced colors
-- **Responsive**: Mobile-first, tablet, desktop breakpoints
-- **Accessible**: WCAG 2.1 AA compliance, keyboard navigation
-
----
-
-## ?? Glossary
-
-**Store**: A business entity that owns products, customers, and orders  
-**PSID**: Page-Scoped ID (Facebook's unique identifier for users per page)  
-**Campaign**: Marketing initiative to promote products across social media  
-**Post**: Social media content scheduled for publishing  
-**Platform**: Social media channel (Facebook, Instagram, etc.)  
-**Team**: Group of users collaborating on a store *(placeholder - not functional)*  
-**Chatbot Order**: Order received via Facebook Messenger (handled by n8n, sent to backend as finalized)  
-**Embedding**: Vector representation of products for AI search (automatic, via n8n)  
-**n8n**: External workflow automation platform that handles Facebook Messenger conversations  
-**Hangfire**: Background job scheduler (publishes posts, sends notifications)  
-**Homepage**: Landing page after login where user selects store or creates new one  
-**Store-Scoped**: API endpoint that requires `X-Store-ID` header  
-**RTL**: Right-to-Left (Arabic language layout direction)  
-**LTR**: Left-to-Right (English language layout direction)
-
----
-
-## ?? FINAL CHECKLIST FOR FRONTEND GENERATION
-
-### ? Must Understand
-- [ ] Backend **DOES NOT** receive raw Facebook messages
-- [ ] n8n handles all chatbot conversations
-- [ ] Backend only receives **finalized orders** from n8n
-- [ ] Store resolution (PageID ? StoreID) is **backend internal**
-- [ ] Frontend never sends StoreID with chatbot orders
-- [ ] **Frontend NEVER calls `/api/orders/chatbot`** (n8n exclusive endpoint)
-- [ ] Order statuses are **EXACT strings** (Pending, Accepted, etc.)
-- [ ] Campaign stages are **EXACT strings** (Draft, Scheduled, etc.)
-- [ ] Campaign creation is a **3-step wizard**, not a single form
-- [ ] Team collaboration is a **placeholder** (do not build functional UI)
-- [ ] **Only Facebook platform is available** until API endpoint is ready
-- [ ] **Order source detection**: Prefer `orderSource` field if exists, else infer from PSID
-- [ ] **Homepage is the landing page** after login (store/team selection)
-
-### ? Must Implement
-- [ ] **Homepage** with store grid + team list (placeholder)
-- [ ] **Empty state** for no stores/teams ("Start a Store", "Join a Team")
-- [ ] **"+ New Store" card** in store grid (same size as stores)
-- [ ] Store selector dropdown (always visible in header after store selected)
-- [ ] HTTP interceptor (auto-add X-Store-ID header)
-- [ ] Campaign creation wizard (3 steps)
-- [ ] Platform checkboxes in post creation (**hardcode Facebook only for now**)
-- [ ] Pending orders dashboard widget (poll every 30 seconds)
-- [ ] Accept/Reject buttons (enabled only for pending orders)
-- [ ] Order status badges (color-coded)
-- [ ] Campaign stage badges (color-coded)
-- [ ] **Chatbot order badge** (show if `isChatbotOrder()` returns true)
-- [ ] **Language switcher** (English/Arabic dropdown in navbar)
-- [ ] **RTL support** (layout flips for Arabic)
-
-### ? Must NOT Implement
-- [ ] Chat UI components (no message handling)
-- [ ] Websocket connections for chat
-- [ ] Facebook message receiving logic
-- [ ] Store resolution logic (backend handles)
-- [ ] Functional team invitation system (placeholder only)
-- [ ] **Multi-platform UI for Instagram/TikTok/YouTube** (not ready yet)
-- [ ] **Functional team management** (disabled buttons only)
-- [ ] **Chatbot order creation forms** (frontend never creates chatbot orders)
-- [ ] **Services/hooks calling `/api/orders/chatbot`** (n8n exclusive endpoint)
-- [ ] **Any UI for submitting to chatbot endpoint** (security risk)
-
-### ? Design Requirements
-- [ ] **Professional & Alive**: Modern, smooth animations
-- [ ] **Elegant**: Clean, spacious, subtle shadows
-- [ ] **Bilingual**: Full English/Arabic support
-- [ ] **RTL/LTR**: Proper layout flipping
-- [ ] **Responsive**: Mobile, tablet, desktop
-- [ ] **Accessible**: Keyboard navigation, ARIA labels
-
----
-
-**End of Business Scenario Documentation (Corrected for Frontend Generation - Final)**
-
-This document is **fully optimized for AI-powered frontend code generation** with all critical clarifications, homepage flow, bilingual support, and temporary workarounds for missing APIs.
