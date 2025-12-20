@@ -1,0 +1,366 @@
+// Dark Premium Theme Variables
+$bg-main: #0B0F19;
+$bg-card: #111827;
+$bg-elevated: #1F2937;
+$border-color: #1E293B;
+$text-primary: #F9FAFB;
+$text-secondary: #CBD5E1;
+$text-muted: #94A3B8;
+$accent-gold: #D4AF37;
+$accent-gold-hover: #B8962E;
+$accent-gold-glow: rgba(212, 175, 55, 0.15);
+$success: #22C55E;
+$warning: #F59E0B;
+$error: #EF4444;
+$info: #38BDF8;
+
+.edit-customer {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+// Loading container
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  background: $bg-card;
+  border-radius: 16px;
+  margin-top: 2rem;
+
+  .spinner-large {
+    width: 48px;
+    height: 48px;
+    border: 3px solid $border-color;
+    border-top-color: $accent-gold;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  p {
+    margin-top: 1rem;
+    color: $text-muted;
+  }
+}
+
+// Header
+.page-header {
+  margin-bottom: 2rem;
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: $text-muted;
+    text-decoration: none;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: $accent-gold;
+    }
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: $text-primary;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .subtitle {
+    color: $text-muted;
+    margin: 0;
+  }
+}
+
+// Error Message
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: rgba($error, 0.1);
+  border: 1px solid rgba($error, 0.3);
+  border-radius: 12px;
+  color: $error;
+  margin-bottom: 1.5rem;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  span {
+    flex: 1;
+  }
+}
+
+// Form Card
+.form-card {
+  background: $bg-card;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid $border-color;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid $border-color;
+
+  &:last-of-type {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 1.25rem 0;
+
+    svg {
+      color: $accent-gold;
+    }
+  }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  &.full-width {
+    grid-column: 1 / -1;
+  }
+
+  label {
+    font-weight: 600;
+    color: $text-secondary;
+    font-size: 0.875rem;
+  }
+
+  &.has-error {
+    label {
+      color: $error;
+    }
+  }
+}
+
+.form-control {
+  padding: 0.875rem 1rem;
+  border: 2px solid $border-color;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  background: $bg-elevated;
+  color: $text-primary;
+  width: 100%;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: $accent-gold;
+    box-shadow: 0 0 0 3px $accent-gold-glow;
+  }
+
+  &::placeholder {
+    color: $text-muted;
+  }
+
+  &.input-error {
+    border-color: $error;
+    
+    &:focus {
+      border-color: $error;
+      box-shadow: 0 0 0 3px rgba($error, 0.15);
+    }
+  }
+  
+  &.input-success {
+    border-color: $success;
+  }
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 100px;
+}
+
+// Input wrapper with status icon
+.input-wrapper {
+  position: relative;
+  
+  .form-control {
+    padding-right: 2.75rem;
+  }
+  
+  .status-icon {
+    position: absolute;
+    right: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    &.success {
+      color: $success;
+    }
+    
+    &.error {
+      color: $error;
+    }
+  }
+}
+
+// Field error message
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: $error;
+  animation: errorSlideIn 0.2s ease-out;
+  
+  svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+}
+
+// Required indicator
+.required-indicator {
+  color: $error;
+  margin-left: 0.125rem;
+}
+
+// Form Actions
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid $border-color;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary {
+  background: $bg-elevated;
+  color: $text-primary;
+
+  &:hover {
+    background: lighten($bg-elevated, 5%);
+  }
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, $accent-gold, $accent-gold-hover);
+  color: $bg-main;
+  box-shadow: 0 4px 15px $accent-gold-glow;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px $accent-gold-glow;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0, 0, 0, 0.3);
+    border-top-color: $bg-main;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+@keyframes errorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .edit-customer {
+    padding: 1rem;
+  }
+
+  .form-card {
+    padding: 1.5rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}

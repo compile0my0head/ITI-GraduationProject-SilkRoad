@@ -1,0 +1,249 @@
+<div class="page-container">
+  <!-- Success Alert -->
+  @if (success()) {
+    <div class="alert alert-success">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <span>{{ success() }}</span>
+    </div>
+  }
+
+  <!-- Error Alert -->
+  @if (error()) {
+    <div class="alert alert-error" (click)="clearError()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>{{ error() }}</span>
+      <button class="close-btn">&times;</button>
+    </div>
+  }
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-back">
+      <a routerLink="/app/products" class="back-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+        Back to Products
+      </a>
+    </div>
+    <h1>Add New Product</h1>
+    <p class="subtitle">Fill in the details to add a new product to your store</p>
+  </div>
+
+  <!-- Form Card -->
+  <div class="form-card">
+    <form (ngSubmit)="onSubmit()" [class.shake]="formSubmitAttempted() && !isFormValid()">
+      <div class="form-grid">
+        <!-- Product Name -->
+        <div class="form-group full-width" [class.has-error]="showNameError()">
+          <label for="name">
+            Product Name
+            <span class="required-indicator">*</span>
+          </label>
+          <div class="input-wrapper" [class.has-error]="showNameError()">
+            <input
+              type="text"
+              id="name"
+              class="form-input"
+              [class.input-error]="showNameError()"
+              [class.input-success]="nameTouched() && nameValidation().valid && name()"
+              [value]="name()"
+              (input)="name.set($any($event.target).value)"
+              (blur)="onNameBlur()"
+              placeholder="Enter product name"
+            />
+            @if (nameTouched() && name()) {
+              <span class="status-icon" [class.success]="nameValidation().valid" [class.error]="!nameValidation().valid">
+                @if (nameValidation().valid) {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                } @else {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                }
+              </span>
+            }
+          </div>
+          @if (showNameError()) {
+            <div class="field-error">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{{ nameValidation().message }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Description -->
+        <div class="form-group full-width">
+          <label for="description">Description</label>
+          <textarea
+            id="description"
+            class="form-input"
+            [value]="description()"
+            (input)="description.set($any($event.target).value)"
+            placeholder="Enter product description"
+            rows="4"
+          ></textarea>
+          <span class="form-hint">Optional - Add a detailed description of your product</span>
+        </div>
+
+        <!-- Price -->
+        <div class="form-group" [class.has-error]="showPriceError()">
+          <label for="price">
+            Price ($)
+            <span class="required-indicator">*</span>
+          </label>
+          <div class="input-wrapper" [class.has-error]="showPriceError()">
+            <span class="input-prefix">$</span>
+            <input
+              type="number"
+              id="price"
+              class="form-input has-prefix"
+              [class.input-error]="showPriceError()"
+              [class.input-success]="priceTouched() && priceValidation().valid && price() !== null"
+              [value]="price()"
+              (input)="price.set($any($event.target).valueAsNumber)"
+              (blur)="onPriceBlur()"
+              placeholder="0.00"
+              min="0"
+              step="0.01"
+            />
+          </div>
+          @if (showPriceError()) {
+            <div class="field-error">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{{ priceValidation().message }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Stock Quantity -->
+        <div class="form-group" [class.has-error]="showStockQuantityError()">
+          <label for="stockQuantity">
+            Stock Quantity
+            <span class="required-indicator">*</span>
+          </label>
+          <div class="input-wrapper" [class.has-error]="showStockQuantityError()">
+            <input
+              type="number"
+              id="stockQuantity"
+              class="form-input"
+              [class.input-error]="showStockQuantityError()"
+              [class.input-success]="stockQuantityTouched() && stockQuantityValidation().valid && stockQuantity() !== null"
+              [value]="stockQuantity()"
+              (input)="stockQuantity.set($any($event.target).valueAsNumber)"
+              (blur)="onStockQuantityBlur()"
+              placeholder="0"
+              min="0"
+            />
+          </div>
+          @if (showStockQuantityError()) {
+            <div class="field-error">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{{ stockQuantityValidation().message }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Category -->
+        <div class="form-group">
+          <label for="category">Category</label>
+          <input
+            type="text"
+            id="category"
+            class="form-input"
+            [value]="category()"
+            (input)="category.set($any($event.target).value)"
+            placeholder="e.g., Electronics, Clothing"
+          />
+          <span class="form-hint">Optional - Helps organize your products</span>
+        </div>
+
+        <!-- Image URL -->
+        <div class="form-group" [class.has-error]="showImageUrlError()">
+          <label for="imageUrl">Image URL</label>
+          <div class="input-wrapper" [class.has-error]="showImageUrlError()">
+            <input
+              type="url"
+              id="imageUrl"
+              class="form-input"
+              [class.input-error]="showImageUrlError()"
+              [class.input-success]="imageUrlTouched() && imageUrlValidation().valid && imageUrl()"
+              [value]="imageUrl()"
+              (input)="imageUrl.set($any($event.target).value)"
+              (blur)="onImageUrlBlur()"
+              placeholder="https://example.com/image.jpg"
+            />
+          </div>
+          @if (showImageUrlError()) {
+            <div class="field-error">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{{ imageUrlValidation().message }}</span>
+            </div>
+          } @else {
+            <span class="form-hint">Optional - Link to product image</span>
+          }
+        </div>
+      </div>
+
+      <!-- Image Preview -->
+      @if (imageUrl() && imageUrlValidation().valid) {
+        <div class="image-preview">
+          <label>Image Preview</label>
+          <div class="preview-container">
+            <img [src]="imageUrl()" alt="Product preview" />
+          </div>
+        </div>
+      }
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <a routerLink="/app/products" class="btn btn-secondary">Cancel</a>
+        <button 
+          type="submit" 
+          class="btn btn-primary"
+          [disabled]="isLoading()"
+          [class.btn-loading]="isLoading()"
+        >
+          @if (isLoading()) {
+            <span class="spinner"></span>
+            Creating...
+          } @else {
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Create Product
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

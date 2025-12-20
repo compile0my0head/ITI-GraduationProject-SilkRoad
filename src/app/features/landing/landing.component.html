@@ -1,0 +1,269 @@
+<div class="landing-page">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-gradient"></div>
+      <div class="hero-pattern"></div>
+    </div>
+    
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </span>
+        <span>AI-Powered Business Management</span>
+      </div>
+      
+      <h1 class="hero-title">
+        Run Your Online Store
+        <span class="highlight">Smarter with AI</span>
+      </h1>
+      
+      <p class="hero-subtitle">
+        Automate content creation, schedule campaigns, analyze sales, and let AI handle customer conversations. 
+        Everything you need to scale your e-commerce business in one platform.
+      </p>
+      
+      <div class="hero-actions">
+        <a routerLink="/auth/register" class="btn-primary btn-lg">
+          Get Started Free
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        <button class="btn-outline btn-lg" (click)="scrollToSection('how-it-works')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/>
+          </svg>
+          See How It Works
+        </button>
+      </div>
+      
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-value">10x</span>
+          <span class="stat-label">Faster Content Creation</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-value">24/7</span>
+          <span class="stat-label">Customer Support</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-value">40%</span>
+          <span class="stat-label">Time Saved Weekly</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="hero-visual">
+      <div class="dashboard-preview">
+        <div class="preview-header">
+          <div class="preview-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <span class="preview-title">SilkRoad Dashboard</span>
+        </div>
+        <div class="preview-content">
+          <div class="preview-sidebar">
+            <div class="sidebar-item active"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+          </div>
+          <div class="preview-main">
+            <div class="preview-cards">
+              <div class="preview-card gold"></div>
+              <div class="preview-card"></div>
+              <div class="preview-card"></div>
+            </div>
+            <div class="preview-chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-badge">Features</span>
+        <h2 class="section-title">Everything You Need to Grow</h2>
+        <p class="section-subtitle">
+          Powerful tools designed specifically for online store owners who want to scale without the complexity.
+        </p>
+      </div>
+      
+      <div class="features-grid">
+        @for (feature of features; track feature.title; let i = $index) {
+          <div 
+            class="feature-card" 
+            [class.active]="activeFeature() === i"
+            (mouseenter)="setActiveFeature(i)"
+          >
+            <div class="feature-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path [attr.d]="feature.icon"/>
+              </svg>
+            </div>
+            <h3 class="feature-title">{{ feature.title }}</h3>
+            <p class="feature-description">{{ feature.description }}</p>
+            <div class="feature-glow"></div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-badge">How It Works</span>
+        <h2 class="section-title">Get Started in Three Steps</h2>
+        <p class="section-subtitle">
+          Setting up SilkRoad takes minutes, not days. Start automating your business today.
+        </p>
+      </div>
+      
+      <div class="steps-container">
+        @for (step of steps; track step.number) {
+          <div class="step-card">
+            <span class="step-number">{{ step.number }}</span>
+            <div class="step-content">
+              <h3 class="step-title">{{ step.title }}</h3>
+              <p class="step-description">{{ step.description }}</p>
+            </div>
+            <div class="step-connector"></div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Benefits Section -->
+  <section class="benefits" id="benefits">
+    <div class="section-container">
+      <div class="benefits-content">
+        <div class="benefits-text">
+          <span class="section-badge">Why SilkRoad</span>
+          <h2 class="section-title">Built for Growing Businesses</h2>
+          <p class="benefits-description">
+            Small online stores face unique challenges. Limited time, tight budgets, and the need to 
+            compete with larger players. SilkRoad levels the playing field with enterprise-grade 
+            AI tools at a fraction of the cost.
+          </p>
+          
+          <ul class="benefits-list">
+            <li>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <span>Save 10+ hours per week on content creation</span>
+            </li>
+            <li>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <span>Never miss a customer message again</span>
+            </li>
+            <li>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <span>Make data-driven decisions with real analytics</span>
+            </li>
+            <li>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <span>Scale without hiring additional staff</span>
+            </li>
+          </ul>
+        </div>
+        
+        <div class="benefits-visual">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Revenue Growth</span>
+              <span class="metric-trend positive">+27%</span>
+            </div>
+            <div class="metric-value">Average increase in first 90 days</div>
+            <div class="metric-bar">
+              <div class="metric-fill"></div>
+            </div>
+          </div>
+          
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Time Saved</span>
+              <span class="metric-trend positive">40hrs/mo</span>
+            </div>
+            <div class="metric-value">Automation handles routine tasks</div>
+            <div class="metric-bar">
+              <div class="metric-fill wide"></div>
+            </div>
+          </div>
+          
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Customer Response</span>
+              <span class="metric-trend positive">&lt;1min</span>
+            </div>
+            <div class="metric-value">AI chatbot average response time</div>
+            <div class="metric-bar">
+              <div class="metric-fill full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA Section -->
+  <section class="final-cta">
+    <div class="section-container">
+      <div class="cta-content">
+        <h2 class="cta-title">Start Managing Your Business with SilkRoad</h2>
+        <p class="cta-subtitle">
+          Join thousands of online store owners who are growing smarter, not harder. 
+          Get started free today.
+        </p>
+        <div class="cta-actions">
+          <a routerLink="/auth/register" class="btn-primary btn-xl">
+            Create Your Account
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+        </div>
+        <p class="cta-note">No credit card required</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="12" fill="#D4AF37"/>
+          <path d="M14 32L24 16L34 32H14Z" fill="#111827"/>
+        </svg>
+        <span>SilkRoad</span>
+      </div>
+      <p class="footer-copyright">
+        &copy; {{ currentYear }} SilkRoad. All rights reserved.
+      </p>
+    </div>
+  </footer>
+</div>

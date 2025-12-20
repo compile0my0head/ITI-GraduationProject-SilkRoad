@@ -1,0 +1,350 @@
+<div class="edit-campaign-container">
+  <div class="page-header">
+    <div class="header-content">
+      <button class="btn btn-secondary btn-back" (click)="goBack()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Campaigns
+      </button>
+      <h1>Edit Campaign</h1>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading campaign...</p>
+    </div>
+  } @else if (error()) {
+    <div class="error-container">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <p>{{ error() }}</p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Campaigns</button>
+    </div>
+  } @else if (campaign()) {
+    <div class="campaign-content">
+      <!-- Tabs -->
+      <div class="tabs">
+        <button 
+          class="btn tab-btn" 
+          [class.active]="activeTab() === 'details'"
+          (click)="setActiveTab('details')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Details
+        </button>
+        <button 
+          class="btn tab-btn" 
+          [class.active]="activeTab() === 'posts'"
+          (click)="setActiveTab('posts')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+          Posts
+        </button>
+        <button 
+          class="btn tab-btn" 
+          [class.active]="activeTab() === 'settings'"
+          (click)="setActiveTab('settings')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          Settings
+        </button>
+      </div>
+
+      <!-- Details Tab -->
+      @if (activeTab() === 'details') {
+        <div class="tab-content">
+          <div class="campaign-info-card">
+            <div class="card-header">
+              <h2>Campaign Details</h2>
+              <span class="stage-badge" [class]="getStageClass(campaign()!.campaignStage)">
+                {{ getStageIcon(campaign()!.campaignStage) }} {{ campaign()!.campaignStage }}
+              </span>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group" [class.has-error]="showCampaignNameError()">
+                <label for="campaignName">
+                  Campaign Name
+                  <span class="required-indicator">*</span>
+                </label>
+                <div class="input-wrapper" [class.has-error]="showCampaignNameError()">
+                  <input
+                    type="text"
+                    id="campaignName"
+                    class="form-control"
+                    [class.input-error]="showCampaignNameError()"
+                    [class.input-success]="campaignNameTouched() && campaignNameValidation().valid && campaignName()"
+                    [ngModel]="campaignName()"
+                    (ngModelChange)="campaignName.set($event)"
+                    (blur)="onCampaignNameBlur()"
+                    placeholder="Enter campaign name"
+                    [disabled]="!canEdit()"
+                  />
+                  @if (campaignNameTouched() && campaignName() && canEdit()) {
+                    <span class="status-icon" [class.success]="campaignNameValidation().valid" [class.error]="!campaignNameValidation().valid">
+                      @if (campaignNameValidation().valid) {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      } @else {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <line x1="12" y1="8" x2="12" y2="12"/>
+                          <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                      }
+                    </span>
+                  }
+                </div>
+                @if (showCampaignNameError()) {
+                  <div class="field-error">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>{{ campaignNameValidation().message }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="form-group full-width">
+                <label for="campaignDescription">Description</label>
+                <textarea
+                  id="campaignDescription"
+                  class="form-control"
+                  [ngModel]="campaignDescription()"
+                  (ngModelChange)="campaignDescription.set($event)"
+                  placeholder="Describe your campaign"
+                  rows="3"
+                  [disabled]="!canEdit()"
+                ></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="goal">Goal</label>
+                <input
+                  type="text"
+                  id="goal"
+                  class="form-control"
+                  [ngModel]="goal()"
+                  (ngModelChange)="goal.set($event)"
+                  placeholder="e.g., Increase brand awareness"
+                  [disabled]="!canEdit()"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="targetAudience">Target Audience</label>
+                <input
+                  type="text"
+                  id="targetAudience"
+                  class="form-control"
+                  [ngModel]="targetAudience()"
+                  (ngModelChange)="targetAudience.set($event)"
+                  placeholder="e.g., Young adults 18-35"
+                  [disabled]="!canEdit()"
+                />
+              </div>
+
+              <div class="form-group" [class.has-error]="showStartDateError()">
+                <label for="scheduledStartAt">Start Date</label>
+                <input
+                  type="datetime-local"
+                  id="scheduledStartAt"
+                  class="form-control"
+                  [class.input-error]="showStartDateError()"
+                  [class.input-success]="scheduledStartAtTouched() && startDateValidation().valid && scheduledStartAt()"
+                  [ngModel]="scheduledStartAt()"
+                  (ngModelChange)="scheduledStartAt.set($event)"
+                  (blur)="onStartDateBlur()"
+                  [disabled]="!canEdit()"
+                />
+                @if (showStartDateError()) {
+                  <div class="field-error">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>{{ startDateValidation().message }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="form-group" [class.has-error]="showEndDateError()">
+                <label for="scheduledEndAt">End Date</label>
+                <input
+                  type="datetime-local"
+                  id="scheduledEndAt"
+                  class="form-control"
+                  [class.input-error]="showEndDateError()"
+                  [class.input-success]="scheduledEndAtTouched() && endDateValidation().valid && scheduledEndAt()"
+                  [ngModel]="scheduledEndAt()"
+                  (ngModelChange)="scheduledEndAt.set($event)"
+                  (blur)="onEndDateBlur()"
+                  [disabled]="!canEdit()"
+                />
+                @if (showEndDateError()) {
+                  <div class="field-error">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>{{ endDateValidation().message }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="info-section">
+              <h3>Campaign Information</h3>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="label">Campaign ID</span>
+                  <span class="value">{{ campaign()?.id }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">Created By</span>
+                  <span class="value">{{ campaign()?.createdByUserName || 'Unknown' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">Created At</span>
+                  <span class="value">{{ formatDate(campaign()?.createdAt) }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">Last Updated</span>
+                  <span class="value">{{ formatDate(campaign()?.updatedAt) }}</span>
+                </div>
+                @if (campaign()?.assignedProductName) {
+                  <div class="info-item">
+                    <span class="label">Assigned Product</span>
+                    <span class="value">{{ campaign()?.assignedProductName }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="actions-bar">
+            @if (canEdit()) {
+              <button 
+                class="btn btn-primary" 
+                (click)="saveChanges()"
+                [disabled]="isSaving() || !hasChanges()">
+                @if (isSaving()) {
+                  <span class="spinner-small"></span> Saving...
+                } @else {
+                  <i class="fas fa-save"></i> Save Changes
+                }
+              </button>
+            }
+
+            @if (campaign()?.campaignStage === 'Draft') {
+              <button 
+                class="btn btn-secondary"
+                (click)="updateStage('InReview')"
+                [disabled]="isSaving()">
+                <i class="fas fa-paper-plane"></i> Submit for Review
+              </button>
+            }
+
+            @if (campaign()?.campaignStage === 'Draft' || campaign()?.campaignStage === 'InReview' || campaign()?.campaignStage === 'Scheduled') {
+              <button 
+                class="btn btn-success"
+                (click)="publishCampaign()"
+                [disabled]="isSaving() || isPublishing()">
+                <i class="fas fa-rocket"></i> 
+                @if (isPublishing()) {
+                  Publishing...
+                } @else {
+                  Publish Now
+                }
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Posts Tab -->
+      @if (activeTab() === 'posts') {
+        <div class="tab-content">
+          <div class="posts-section">
+            <div class="section-header">
+              <h2>Campaign Posts</h2>
+              <a [routerLink]="['/app/campaigns', campaign()!.id, 'posts']" class="btn btn-primary">
+                <i class="fas fa-list"></i> Manage Posts
+              </a>
+            </div>
+            <p class="help-text">
+              Create and manage posts for this campaign. Posts can be scheduled and published to connected social platforms.
+            </p>
+          </div>
+        </div>
+      }
+
+      <!-- Settings Tab -->
+      @if (activeTab() === 'settings') {
+        <div class="tab-content">
+          <div class="settings-section">
+            <h2>Campaign Settings</h2>
+            
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>Campaign Scheduling</h4>
+                <p>Control whether this campaign's posts are automatically published at their scheduled times</p>
+                <div class="status-indicator">
+                  <span class="status-badge" [class.active]="isSchedulingEnabled()" [class.inactive]="!isSchedulingEnabled()">
+                    {{ campaignSchedulingStatus() }}
+                  </span>
+                </div>
+              </div>
+              <button 
+                class="btn" 
+                [class.btn-success]="!isSchedulingEnabled()"
+                [class.btn-danger]="isSchedulingEnabled()"
+                (click)="toggleCampaignScheduling()"
+                [disabled]="isTogglingScheduling() || isSaving()">
+                @if (isTogglingScheduling()) {
+                  <span class="spinner-small"></span> Updating...
+                } @else {
+                  @if (isSchedulingEnabled()) {
+                    <i class="fas fa-pause-circle"></i> Disable Scheduling
+                  } @else {
+                    <i class="fas fa-play-circle"></i> Enable Scheduling
+                  }
+                }
+              </button>
+            </div>
+
+            <div class="danger-zone">
+              <h3>Danger Zone</h3>
+              <p>These actions are irreversible. Please proceed with caution.</p>
+              
+              @if (campaign()?.campaignStage === 'Draft') {
+                <button class="btn btn-danger" disabled>
+                  <i class="fas fa-trash"></i> Delete Campaign
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

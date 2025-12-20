@@ -1,0 +1,206 @@
+<aside class="sidebar" [class.collapsed]="sidebarCollapsed()" [class.hidden]="isHidden()" (click)="closeDropdowns()">
+  <!-- Page Indicator -->
+  <div class="page-indicator">
+    @for (item of navItems; track item.route) {
+      @if (!item.disabled) {
+        <div 
+          class="indicator-dot" 
+          [class.active]="currentRoute().startsWith(item.route)"
+          [title]="item.label"
+          (click)="router.navigate([item.route]); $event.stopPropagation()"
+        ></div>
+      }
+    }
+  </div>
+  
+  <div class="sidebar-header">
+    <div class="logo" (click)="goToLanding()">
+      <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="48" height="48" rx="12" fill="#111827"/>
+        <path d="M14 32L24 16L34 32H14Z" fill="#D4AF37"/>
+      </svg>
+      @if (!sidebarCollapsed()) {
+        <span class="logo-text">SilkRoad</span>
+      }
+    </div>
+    <button class="toggle-btn" (click)="toggleSidebar(); $event.stopPropagation()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        @if (sidebarCollapsed()) {
+          <polyline points="9 18 15 12 9 6"/>
+        } @else {
+          <polyline points="15 18 9 12 15 6"/>
+        }
+      </svg>
+    </button>
+  </div>
+
+  <!-- Store Selector -->
+  <div class="store-selector" (click)="toggleStoreDropdown(); $event.stopPropagation()">
+    @if (currentStore()) {
+      <div class="store-current">
+        <div class="store-avatar">
+          {{ currentStore()!.storeName.charAt(0).toUpperCase() }}
+        </div>
+        @if (!sidebarCollapsed()) {
+          <div class="store-info">
+            <span class="store-name">{{ currentStore()!.storeName }}</span>
+            <span class="store-label">Current Store</span>
+          </div>
+          <svg class="chevron" [class.rotated]="showStoreDropdown()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Store Dropdown (outside selector for proper flow) -->
+  @if (showStoreDropdown() && !sidebarCollapsed()) {
+    <div class="store-dropdown-container" (click)="$event.stopPropagation()">
+      <div class="dropdown store-dropdown">
+        @for (store of stores(); track store.id) {
+          <button 
+            class="dropdown-item" 
+            [class.active]="store.id === currentStore()?.id"
+            (click)="selectStore(store.id); $event.stopPropagation()"
+          >
+            <span class="store-avatar sm">{{ store.storeName.charAt(0).toUpperCase() }}</span>
+            <span>{{ store.storeName }}</span>
+          </button>
+        }
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item" (click)="goToHome(); $event.stopPropagation()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          <span>Manage Stores</span>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Navigation -->
+  <nav class="sidebar-nav">
+    @for (item of navItems; track item.route) {
+      @if (item.disabled) {
+        <div class="nav-item disabled" [title]="item.tooltip || ''">
+          <span class="nav-icon">
+            @switch (item.icon) {
+              @case ('analytics') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="20" x2="12" y2="10"/>
+                  <line x1="18" y1="20" x2="18" y2="4"/>
+                  <line x1="6" y1="20" x2="6" y2="16"/>
+                </svg>
+              }
+              @case ('teams') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+              }
+            }
+          </span>
+          @if (!sidebarCollapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+            <span class="badge-soon">Soon</span>
+          }
+        </div>
+      } @else {
+        <a 
+          class="nav-item" 
+          [routerLink]="item.route" 
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{exact: item.route === '/app/dashboard'}"
+        >
+          <span class="nav-icon">
+            @switch (item.icon) {
+              @case ('dashboard') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="9"/>
+                  <rect x="14" y="3" width="7" height="5"/>
+                  <rect x="14" y="12" width="7" height="9"/>
+                  <rect x="3" y="16" width="7" height="5"/>
+                </svg>
+              }
+              @case ('products') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                  <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+              }
+              @case ('orders') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                  <line x1="3" y1="6" x2="21" y2="6"/>
+                  <path d="M16 10a4 4 0 01-8 0"/>
+                </svg>
+              }
+              @case ('customers') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+              }
+              @case ('campaigns') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              }
+            }
+          </span>
+          @if (!sidebarCollapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+          }
+        </a>
+      }
+    }
+  </nav>
+
+  <!-- User Section -->
+  <div class="sidebar-footer">
+    <div class="user-section" (click)="toggleUserDropdown(); $event.stopPropagation()">
+      @if (user()) {
+        <div class="user-avatar">
+          {{ user()!.fullName.charAt(0).toUpperCase() }}
+        </div>
+        @if (!sidebarCollapsed()) {
+          <div class="user-info">
+            <span class="user-name">{{ user()!.fullName }}</span>
+            <span class="user-email">{{ user()!.email }}</span>
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        }
+      }
+
+      <!-- User Dropdown -->
+      @if (showUserDropdown() && !sidebarCollapsed()) {
+        <div class="dropdown user-dropdown">
+          <button class="dropdown-item" (click)="goToHome(); $event.stopPropagation()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>Switch Store</span>
+          </button>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item logout" (click)="logout(); $event.stopPropagation()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span>Logout</span>
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</aside>

@@ -1,0 +1,167 @@
+<div class="campaigns-list">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>Campaigns</h1>
+      <p class="subtitle">Create and manage your marketing campaigns</p>
+    </div>
+    <a routerLink="create" class="btn-primary">
+      <span class="icon">➕</span>
+      New Campaign
+    </a>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-row">
+    <div class="stat-card" (click)="onStageFilter('all')" [class.active]="selectedStage() === 'all'">
+      <div class="stat-icon total">📊</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats().total }}</span>
+        <span class="stat-label">Total</span>
+      </div>
+    </div>
+    <div class="stat-card" (click)="onStageFilter('Draft')" [class.active]="selectedStage() === 'Draft'">
+      <div class="stat-icon draft">📝</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats().draft }}</span>
+        <span class="stat-label">Draft</span>
+      </div>
+    </div>
+    <div class="stat-card" (click)="onStageFilter('Scheduled')" [class.active]="selectedStage() === 'Scheduled'">
+      <div class="stat-icon scheduled">📅</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats().scheduled }}</span>
+        <span class="stat-label">Scheduled</span>
+      </div>
+    </div>
+    <div class="stat-card" (click)="onStageFilter('Published')" [class.active]="selectedStage() === 'Published'">
+      <div class="stat-icon published">🚀</div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats().published }}</span>
+        <span class="stat-label">Published</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input 
+        type="text" 
+        placeholder="Search campaigns..." 
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearch($event)"
+      />
+    </div>
+    <div class="filter-group">
+      <select 
+        [ngModel]="selectedStage()" 
+        (ngModelChange)="onStageFilter($event)"
+        class="stage-filter"
+      >
+        @for (option of stageOptions; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading campaigns...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error()) {
+    <div class="error-state">
+      <span class="error-icon">⚠️</span>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!isLoading() && !error() && filteredCampaigns().length === 0) {
+    <div class="empty-state">
+      @if (campaigns().length === 0) {
+        <div class="empty-icon">📢</div>
+        <h3>No campaigns yet</h3>
+        <p>Create your first marketing campaign to reach your customers</p>
+        <a routerLink="create" class="btn-primary">Create Campaign</a>
+      } @else {
+        <div class="empty-icon">🔍</div>
+        <h3>No campaigns found</h3>
+        <p>Try adjusting your search or filter criteria</p>
+        <button class="btn-secondary" (click)="searchQuery.set(''); selectedStage.set('all')">
+          Clear Filters
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Campaigns Grid -->
+  @if (!isLoading() && filteredCampaigns().length > 0) {
+    <div class="campaigns-grid">
+      @for (campaign of filteredCampaigns(); track campaign.id) {
+        <div class="campaign-card">
+          <div class="card-header">
+            <span class="stage-badge" [class]="getStageClass(campaign.campaignStage)">
+              {{ getStageIcon(campaign.campaignStage) }} {{ campaign.campaignStage }}
+            </span>
+            <div class="card-actions">
+              <a [routerLink]="['edit', campaign.id]" class="action-btn edit" title="Edit">
+                ✏️
+              </a>
+              <button class="action-btn delete" title="Delete" (click)="deleteCampaign(campaign)">
+                🗑️
+              </button>
+            </div>
+          </div>
+          
+          <div class="card-body">
+            <h3 class="campaign-name">{{ campaign.campaignName }}</h3>
+            @if (campaign.campaignDescription) {
+              <p class="campaign-description">{{ campaign.campaignDescription }}</p>
+            }
+            
+            <div class="campaign-dates">
+              <div class="date-item">
+                <span class="date-label">Start</span>
+                <span class="date-value">{{ formatDate(campaign.scheduledStartAt || campaign.createdAt) }}</span>
+              </div>
+              <div class="date-item">
+                <span class="date-label">End</span>
+                <span class="date-value">{{ campaign.scheduledEndAt ? formatDate(campaign.scheduledEndAt) : 'Not set' }}</span>
+              </div>
+            </div>
+
+            @if (campaign.campaignStage !== 'Draft' && campaign.scheduledEndAt) {
+              <div class="campaign-progress">
+                @if (getDaysRemaining(campaign.scheduledEndAt) > 0) {
+                  <span class="days-remaining positive">
+                    {{ getDaysRemaining(campaign.scheduledEndAt) }} days remaining
+                  </span>
+                } @else {
+                  <span class="days-remaining ended">Campaign ended</span>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="card-footer">
+            <a [routerLink]="[campaign.id, 'posts']" class="posts-link">
+              <span class="icon">📄</span>
+              <span>View Posts</span>
+            </a>
+            <a [routerLink]="['edit', campaign.id]" class="view-link">
+              View Details →
+            </a>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

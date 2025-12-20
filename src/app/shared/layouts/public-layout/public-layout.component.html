@@ -1,0 +1,47 @@
+<div class="public-layout">
+  <!-- Navigation -->
+  <nav class="nav" [class.scrolled]="isScrolled()" [class.hidden]="isHidden()">
+    <div class="nav-container">
+      <div class="nav-brand" routerLink="/">
+        <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="12" fill="#111827"/>
+          <path d="M14 32L24 16L34 32H14Z" fill="#D4AF37"/>
+        </svg>
+        <span class="brand-text">SilkRoad</span>
+      </div>
+      
+      @if (isLandingPage()) {
+        <div class="nav-links">
+          <button class="nav-link" (click)="scrollToSection('features')">Features</button>
+          <button class="nav-link" (click)="scrollToSection('how-it-works')">How It Works</button>
+          <button class="nav-link" (click)="scrollToSection('benefits')">Benefits</button>
+        </div>
+      }
+      
+      <div class="nav-actions">
+        @if (isAuthenticated()) {
+          <button class="btn-ghost" (click)="goToHome()">My Stores</button>
+          <button class="btn-ghost" (click)="logout()">Logout ({{ user()?.fullName }})</button>
+        } @else {
+          <a 
+            routerLink="/auth/login" 
+            class="btn-ghost"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{exact: true}"
+          >Sign In</a>
+          <a 
+            routerLink="/auth/register" 
+            class="btn-primary"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{exact: true}"
+          >Get Started</a>
+        }
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Content -->
+  <main class="public-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

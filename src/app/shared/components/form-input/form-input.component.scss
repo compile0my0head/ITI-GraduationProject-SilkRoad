@@ -1,0 +1,89 @@
+// SilkRoad Form Input - Dark Premium Theme
+$bg-main: #0B0F19;
+$bg-card: #111827;
+$bg-elevated: #1F2937;
+$border-color: #1E293B;
+
+$text-primary: #F9FAFB;
+$text-secondary: #CBD5E1;
+$text-muted: #94A3B8;
+
+$accent-gold: #D4AF37;
+$accent-gold-glow: rgba(212, 175, 55, 0.15);
+
+$error: #EF4444;
+
+.form-input {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.25rem;
+
+  label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: $text-primary;
+  }
+
+  input,
+  textarea,
+  select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    background: $bg-elevated;
+    color: $text-primary;
+    transition: all 0.2s ease;
+
+    &::placeholder {
+      color: $text-muted;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $accent-gold;
+      box-shadow: 0 0 0 3px $accent-gold-glow;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: $bg-card;
+    }
+
+    &.ng-invalid.ng-touched {
+      border-color: $error;
+      
+      &:focus {
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+      }
+    }
+  }
+
+  textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394A3B8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+  }
+
+  .error-message {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: $error;
+  }
+
+  .hint {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: $text-muted;
+  }
+}

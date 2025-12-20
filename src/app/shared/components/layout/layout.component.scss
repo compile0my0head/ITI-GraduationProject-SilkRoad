@@ -1,0 +1,39 @@
+// SilkRoad Layout - Dark Premium Theme
+// Colors
+$bg-main: #0B0F19;
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background: $bg-main;
+}
+
+// Main Content
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 100vh;
+  background: $bg-main;
+}
+
+// Sidebar collapsed state - adjust main content margin
+.sidebar-collapsed .main-content {
+  margin-left: 72px;
+}
+
+// Sidebar hidden state - full width main content
+.sidebar-hidden .main-content {
+  margin-left: 0;
+}
+
+// Responsive
+@media (max-width: 1024px) {
+  .main-content {
+    margin-left: 0;
+  }
+  
+  .sidebar-collapsed .main-content {
+    margin-left: 0;
+  }
+}

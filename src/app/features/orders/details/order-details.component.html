@@ -1,0 +1,256 @@
+<div class="order-details">
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading order details...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !isLoading()) {
+    <div class="error-state">
+      <span class="error-icon">⚠️</span>
+      <p>{{ error() }}</p>
+      <button class="btn-secondary" (click)="goBack()">Back to Orders</button>
+    </div>
+  }
+
+  <!-- Order Content -->
+  @if (order() && !isLoading()) {
+    <!-- Header -->
+    <div class="page-header">
+      <div class="header-left">
+        <button class="back-btn" (click)="goBack()">
+          ← Back to Orders
+        </button>
+        <div class="order-title">
+          <h1>Order #{{ order()?.id?.slice(0, 8) }}...</h1>
+          <span class="status-badge" [class]="getStatusClass(order()!.status)">
+            {{ getStatusIcon(order()!.status) }} {{ order()?.status }}
+          </span>
+        </div>
+        <p class="order-date">Placed on {{ formatDate(order()!.createdAt) }}</p>
+      </div>
+      
+      @if (canUpdateStatus()) {
+        <div class="header-actions">
+          <button 
+            class="btn-accept"
+            (click)="acceptOrder()"
+            [disabled]="isUpdating()"
+          >
+            @if (isUpdating()) {
+              <span class="spinner-small"></span>
+            } @else {
+              ✅
+            }
+            Accept Order
+          </button>
+          <button 
+            class="btn-reject"
+            (click)="rejectOrder()"
+            [disabled]="isUpdating()"
+          >
+            ❌ Reject
+          </button>
+        </div>
+      }
+    </div>
+
+    <div class="order-content">
+      <!-- Left Column -->
+      <div class="main-content">
+        <!-- Order Items -->
+        <div class="section-card">
+          <h2>Order Items</h2>
+          @if (isLoadingProducts()) {
+            <div class="items-loading">
+              <div class="spinner-small"></div>
+              <span>Loading items...</span>
+            </div>
+          } @else {
+            <div class="items-list">
+              @for (item of orderProducts().length > 0 ? orderProducts() : (order()?.items || []); track item.productId) {
+                <div class="order-item">
+                  <div class="item-image">
+                    <div class="placeholder-image">📦</div>
+                  </div>
+                  <div class="item-details">
+                    <h4>{{ item.productName || 'Product #' + item.productId.slice(0, 8) }}</h4>
+                    <p class="item-price">{{ formatCurrency(item.unitPrice) }} each</p>
+                  </div>
+                  <div class="item-quantity">
+                    <span class="qty-label">Qty</span>
+                    <span class="qty-value">{{ item.quantity }}</span>
+                  </div>
+                  <div class="item-total">
+                    {{ formatCurrency(item.unitPrice * item.quantity) }}
+                  </div>
+                </div>
+              } @empty {
+                <div class="empty-items">
+                  <p>No items found for this order.</p>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Order Summary -->
+          <div class="order-summary">
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <span>{{ formatCurrency(order()!.totalPrice * 0.9) }}</span>
+            </div>
+            <div class="summary-row">
+              <span>Shipping</span>
+              <span>{{ formatCurrency(order()!.totalPrice * 0.05) }}</span>
+            </div>
+            <div class="summary-row">
+              <span>Tax</span>
+              <span>{{ formatCurrency(order()!.totalPrice * 0.05) }}</span>
+            </div>
+            <div class="summary-row total">
+              <span>Total</span>
+              <span>{{ formatCurrency(order()!.totalPrice) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order Timeline -->
+        <div class="section-card">
+          <h2>Order Timeline</h2>
+          <div class="timeline">
+            <div class="timeline-item completed">
+              <div class="timeline-marker">✓</div>
+              <div class="timeline-content">
+                <h4>Order Placed</h4>
+                <p>{{ formatDate(order()!.createdAt) }}</p>
+              </div>
+            </div>
+            @if (order()?.status === 'Accepted' || order()?.status === 'Delivered') {
+              <div class="timeline-item completed">
+                <div class="timeline-marker">✓</div>
+                <div class="timeline-content">
+                  <h4>Order Accepted</h4>
+                  <p>{{ formatDate(order()!.createdAt) }}</p>
+                </div>
+              </div>
+            }
+            @if (order()?.status === 'Delivered') {
+              <div class="timeline-item completed">
+                <div class="timeline-marker">✓</div>
+                <div class="timeline-content">
+                  <h4>Order Delivered</h4>
+                  <p>{{ formatDate(order()!.createdAt) }}</p>
+                </div>
+              </div>
+            }
+            @if (order()?.status === 'Rejected') {
+              <div class="timeline-item rejected">
+                <div class="timeline-marker">✗</div>
+                <div class="timeline-content">
+                  <h4>Order Rejected</h4>
+                  <p>{{ formatDate(order()!.createdAt) }}</p>
+                </div>
+              </div>
+            }
+            @if (order()?.status === 'Cancelled') {
+              <div class="timeline-item cancelled">
+                <div class="timeline-marker">✗</div>
+                <div class="timeline-content">
+                  <h4>Order Cancelled</h4>
+                  <p>{{ formatDate(order()!.createdAt) }}</p>
+                </div>
+              </div>
+            }
+            @if (order()?.status === 'Pending') {
+              <div class="timeline-item pending">
+                <div class="timeline-marker">⏳</div>
+                <div class="timeline-content">
+                  <h4>Awaiting Confirmation</h4>
+                  <p>Waiting for store to accept the order</p>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column -->
+      <div class="side-content">
+        <!-- Customer Info -->
+        <div class="section-card">
+          <h2>Customer Information</h2>
+          <div class="customer-info">
+            <div class="info-row">
+              <span class="info-icon">👤</span>
+              <div>
+                <strong>{{ order()?.customerName || 'N/A' }}</strong>
+                <p>Customer</p>
+              </div>
+            </div>
+            @if (order()?.customer?.phone) {
+              <div class="info-row">
+                <span class="info-icon">📱</span>
+                <div>
+                  <strong>{{ order()?.customer?.phone }}</strong>
+                  <p>Phone</p>
+                </div>
+              </div>
+            }
+            @if (order()?.customer?.billingAddress) {
+              <div class="info-row">
+                <span class="info-icon">📍</span>
+                <div>
+                  <strong>{{ order()?.customer?.billingAddress }}</strong>
+                  <p>Address</p>
+                </div>
+              </div>
+            }
+          </div>
+          @if (order()?.customerId) {
+            <div class="customer-actions">
+              <a [routerLink]="['/app/customers', order()!.customerId]" class="btn-view-customer">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+                View Customer Details
+              </a>
+            </div>
+          }
+        </div>
+
+        <!-- Order Details -->
+        <div class="section-card">
+          <h2>Order Details</h2>
+          <div class="address-info">
+            <div class="detail-row">
+              <span>Order Source:</span>
+              <strong>{{ order()?.orderSource || 'Manual' }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>Status:</span>
+              <strong>{{ order()?.statusDisplayName || order()?.status }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Info -->
+        <div class="section-card">
+          <h2>Payment Information</h2>
+          <div class="payment-info">
+            <div class="payment-method">
+              <span class="method-icon">💳</span>
+              <span>Cash on Delivery</span>
+            </div>
+            <div class="payment-status">
+              Pending
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

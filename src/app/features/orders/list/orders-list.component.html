@@ -1,0 +1,170 @@
+<div class="page-container">
+  <!-- Error Alert -->
+  @if (error()) {
+    <div class="alert alert-error" (click)="clearError()">
+      <span>{{ error() }}</span>
+      <button class="close-btn">&times;</button>
+    </div>
+  }
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1>Orders</h1>
+      <p class="subtitle">Manage and track your store orders</p>
+    </div>
+    <a routerLink="/app/orders" class="btn btn-primary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      New Order
+    </a>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="search-bar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input 
+        type="text" 
+        placeholder="Search by order ID, customer name..."
+        [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value)"
+      />
+    </div>
+    <div class="filter-select">
+      <select 
+        [value]="statusFilter()"
+        (change)="statusFilter.set($any($event.target).value)"
+      >
+        @for (option of statusOptions; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-container">
+      <div class="spinner-large"></div>
+      <p>Loading orders...</p>
+    </div>
+  } @else if (!hasOrders()) {
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+      </div>
+      <h2>No Orders Yet</h2>
+      <p>Orders will appear here when customers make purchases.</p>
+      <a routerLink="/app/orders" class="btn btn-primary btn-lg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Create Manual Order
+      </a>
+    </div>
+  } @else {
+    <!-- Orders Table -->
+    <div class="table-container">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Customer</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of filteredOrders(); track order.id) {
+            <tr>
+              <td class="order-id">
+                <a [routerLink]="['/app/orders', order.id]">#{{ order.id.slice(0, 8) }}</a>
+              </td>
+              <td class="customer-cell">
+                @if (order.customer) {
+                  <div class="customer-info">
+                    <span class="customer-name">{{ order.customer.customerName }}</span>
+                    <span class="customer-email">{{ order.customer.phone || 'No phone' }}</span>
+                  </div>
+                } @else if (order.customerName) {
+                  <span class="customer-name">{{ order.customerName }}</span>
+                } @else {
+                  <span class="text-muted">Unknown</span>
+                }
+              </td>
+              <td class="order-total">${{ order.totalPrice.toFixed(2) }}</td>
+              <td>
+                <span class="status-badge" [class]="getStatusClass(order.status)">
+                  {{ order.statusDisplayName || order.status }}
+                </span>
+              </td>
+              <td class="order-date">{{ order.createdAt | date:'short' }}</td>
+              <td class="actions-cell">
+                @if (order.status === 'Pending') {
+                  <a 
+                    [routerLink]="['/app/orders', order.id]" 
+                    class="btn btn-secondary btn-sm"
+                    title="View Details"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    View
+                  </a>
+                  <button 
+                    class="btn btn-success btn-sm" 
+                    (click)="acceptOrder(order)"
+                    [disabled]="isLoading()"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Accept
+                  </button>
+                  <button 
+                    class="btn btn-danger btn-sm" 
+                    (click)="rejectOrder(order)"
+                    [disabled]="isLoading()"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                    Reject
+                  </button>
+                } @else {
+                  <a [routerLink]="['/app/orders', order.id]" class="btn btn-secondary btn-sm">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    View
+                  </a>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (filteredOrders().length === 0 && (searchQuery() || statusFilter())) {
+      <div class="no-results">
+        <p>No orders found matching your filters.</p>
+      </div>
+    }
+  }
+</div>

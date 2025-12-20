@@ -1,0 +1,133 @@
+<div class="connect-platform-page">
+  <!-- Back Link -->
+  <a routerLink="/app/platforms" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Back to Platforms
+  </a>
+
+  <div class="connect-card">
+    <!-- Platform Header -->
+    <div class="platform-header" [style.background-color]="getPlatformColor()">
+      <div class="platform-icon">
+        <span>{{ getPlatformIcon() }}</span>
+      </div>
+      <h1>Connect {{ getPlatformDisplayName() }}</h1>
+    </div>
+
+    <!-- Error Alert -->
+    @if (error()) {
+      <div class="alert alert-error">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        <span>{{ error() }}</span>
+        <button type="button" class="close-btn" (click)="clearError()">×</button>
+      </div>
+    }
+
+    <!-- Step: Info -->
+    @if (connectionStep() === 'info') {
+      <div class="step-content">
+        <h2>Connect Your {{ getPlatformDisplayName() }} Page</h2>
+        <p class="description">
+          Link your {{ getPlatformDisplayName() }} business page to SilkRoad to automatically publish 
+          campaign content and engage with your audience.
+        </p>
+
+        <div class="features-list">
+          <div class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20,6 9,17 4,12"/>
+            </svg>
+            <span>Publish posts directly from campaigns</span>
+          </div>
+          <div class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20,6 9,17 4,12"/>
+            </svg>
+            <span>Schedule content for optimal times</span>
+          </div>
+          <div class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20,6 9,17 4,12"/>
+            </svg>
+            <span>Receive chatbot messages from customers</span>
+          </div>
+        </div>
+
+        <div class="permissions-note">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <div>
+            <strong>Required Permissions</strong>
+            <p>We'll request access to manage your page posts and read messages.</p>
+          </div>
+        </div>
+
+        <button class="btn-primary" (click)="startConnection()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          Continue to Connect
+        </button>
+      </div>
+    }
+
+    <!-- Step: Form (Manual for Testing) -->
+    @if (connectionStep() === 'connecting') {
+      <div class="step-content">
+        <h2>Connecting to {{ getPlatformDisplayName() }}</h2>
+        <p class="description">
+          Please wait while we connect your {{ getPlatformDisplayName() }} account...
+        </p>
+
+        <div class="connecting-spinner">
+          @if (isLoading()) {
+            <span class="spinner large"></span>
+            <p>Authenticating with {{ getPlatformDisplayName() }}...</p>
+          } @else if (error()) {
+            <div class="connection-error">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+              <p>{{ error() }}</p>
+              <button class="btn-secondary" (click)="connectionStep.set('info')">Try Again</button>
+            </div>
+          } @else {
+            <p>Waiting for OAuth configuration...</p>
+            <button class="btn-secondary" (click)="connectionStep.set('info')">Back</button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Step: Success -->
+    @if (connectionStep() === 'success') {
+      <div class="step-content success-content">
+        <div class="success-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <h2>Successfully Connected!</h2>
+        <p class="description">
+          Your {{ getPlatformDisplayName() }} account has been connected to SilkRoad.
+          You can now publish campaign content directly to this platform.
+        </p>
+        <button class="btn-primary" (click)="finishConnection()">
+          Go to Platforms
+        </button>
+      </div>
+    }
+  </div>
+</div>

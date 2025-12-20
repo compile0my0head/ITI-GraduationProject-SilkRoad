@@ -1,0 +1,648 @@
+<div class="create-campaign">
+  <!-- Header -->
+  <div class="page-header">
+    <a routerLink="/app/campaigns" class="back-link">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+      Back to Campaigns
+    </a>
+    <h1>Create Campaign</h1>
+    <p class="subtitle">Set up your marketing campaign in 3 easy steps</p>
+  </div>
+
+  <!-- Progress Steps -->
+  <div class="wizard-progress">
+    <div 
+      class="step" 
+      [class.active]="currentStep() >= 1"
+      [class.completed]="currentStep() > 1"
+      (click)="goToStep(1)"
+    >
+      <div class="step-number">
+        @if (currentStep() > 1) {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        } @else {
+          <span>1</span>
+        }
+      </div>
+      <div class="step-info">
+        <span class="step-title">Campaign Details</span>
+        <span class="step-desc">Name, dates & description</span>
+      </div>
+    </div>
+    <div class="step-connector" [class.active]="currentStep() > 1"></div>
+    <div 
+      class="step" 
+      [class.active]="currentStep() >= 2"
+      [class.completed]="currentStep() > 2"
+      (click)="goToStep(2)"
+    >
+      <div class="step-number">
+        @if (currentStep() > 2) {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        } @else {
+          <span>2</span>
+        }
+      </div>
+      <div class="step-info">
+        <span class="step-title">Create Posts</span>
+        <span class="step-desc">Add content for your campaign</span>
+      </div>
+    </div>
+    <div class="step-connector" [class.active]="currentStep() > 2"></div>
+    <div 
+      class="step" 
+      [class.active]="currentStep() >= 3"
+      [class.completed]="currentStep() > 3"
+    >
+      <div class="step-number">
+        <span>3</span>
+      </div>
+      <div class="step-info">
+        <span class="step-title">Publish</span>
+        <span class="step-desc">Review & launch</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  @if (error()) {
+    <div class="error-message">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- Wizard Content -->
+  <div class="wizard-content">
+    <!-- Step 1: Campaign Details -->
+    @if (currentStep() === 1) {
+      <div class="step-content">
+        <div class="step-header">
+          <span class="step-icon">📝</span>
+          <h2>Campaign Details</h2>
+          <p>Start by defining your campaign's basic information</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group full-width" [class.has-error]="showCampaignNameError()">
+            <label for="name">
+              Campaign Name
+              <span class="required-indicator">*</span>
+            </label>
+            <div class="input-wrapper" [class.has-error]="showCampaignNameError()">
+              <input 
+                type="text" 
+                id="name" 
+                class="form-control"
+                [class.input-error]="showCampaignNameError()"
+                [class.input-success]="campaignNameTouched() && campaignNameValidation().valid && campaignName()"
+                [ngModel]="campaignName()"
+                (ngModelChange)="campaignName.set($event)"
+                (blur)="onCampaignNameBlur()"
+                placeholder="Enter campaign name"
+              />
+              @if (campaignNameTouched() && campaignName()) {
+                <span class="status-icon" [class.success]="campaignNameValidation().valid" [class.error]="!campaignNameValidation().valid">
+                  @if (campaignNameValidation().valid) {
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  } @else {
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                  }
+                </span>
+              }
+            </div>
+            @if (showCampaignNameError()) {
+              <div class="field-error">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span>{{ campaignNameValidation().message }}</span>
+              </div>
+            } @else {
+              <span class="form-hint">Minimum 3 characters</span>
+            }
+          </div>
+
+          <div class="form-group full-width">
+            <label for="description">Description</label>
+            <textarea 
+              id="description" 
+              class="form-control"
+              [ngModel]="campaignDescription()"
+              (ngModelChange)="campaignDescription.set($event)"
+              placeholder="Describe your campaign (optional)"
+              rows="3"
+            ></textarea>
+            <span class="form-hint">Optional - Add a description for your campaign</span>
+          </div>
+
+          <!-- Product Assignment Dropdown -->
+          <div class="form-group full-width">
+            <label for="assignedProduct">Assign Product</label>
+            <select 
+              id="assignedProduct" 
+              class="form-control"
+              [ngModel]="assignedProductId()"
+              (ngModelChange)="assignedProductId.set($event)"
+            >
+              <option [ngValue]="null">-- No product assigned --</option>
+              @if (productsLoading()) {
+                <option disabled>Loading products...</option>
+              } @else {
+                @for (product of products(); track product.id) {
+                  <option [ngValue]="product.id">{{ product.productName }} - ${{ product.productPrice }}</option>
+                }
+              }
+            </select>
+            <span class="form-hint">Optional - Link a product to this campaign</span>
+          </div>
+
+          <div class="form-group">
+            <label for="goal">Goal</label>
+            <input 
+              type="text" 
+              id="goal" 
+              class="form-control"
+              [ngModel]="goal()"
+              (ngModelChange)="goal.set($event)"
+              placeholder="e.g., Increase brand awareness"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="targetAudience">Target Audience</label>
+            <input 
+              type="text" 
+              id="targetAudience" 
+              class="form-control"
+              [ngModel]="targetAudience()"
+              (ngModelChange)="targetAudience.set($event)"
+              placeholder="e.g., Young adults 18-35"
+            />
+          </div>
+
+          <!-- Banner URL instead of dates -->
+          <div class="form-group full-width">
+            <label for="bannerUrl">Campaign Banner URL</label>
+            <input 
+              type="url" 
+              id="bannerUrl" 
+              class="form-control"
+              [ngModel]="bannerUrl()"
+              (ngModelChange)="bannerUrl.set($event)"
+              placeholder="https://example.com/banner.jpg"
+            />
+            <span class="form-hint">Optional - Add a banner image URL for your campaign</span>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Step 2: Create Posts -->
+    @if (currentStep() === 2) {
+      <div class="step-content">
+        <div class="step-header">
+          <span class="step-icon">📄</span>
+          <h2>Create Posts</h2>
+          <p>Add content that will be posted during your campaign</p>
+        </div>
+
+        <!-- Info about platforms -->
+        <div class="info-banner">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <p>Posts will be automatically published to all connected platforms when the campaign is activated.</p>
+        </div>
+
+        <!-- Add Post Form - NO platform selection! -->
+        <div class="add-post-form">
+          <!-- AI Generation Buttons -->
+          <div class="ai-generation-section">
+            <div class="ai-generation-header">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+              <span>AI Writing Assistant</span>
+            </div>
+            <div class="ai-buttons-row">
+              <button 
+                type="button" 
+                class="btn-ai-generate"
+                [disabled]="isGeneratingCaption() || !campaignName().trim()"
+                (click)="generateCaption()"
+                title="Generate post caption using AI based on your campaign details"
+              >
+                @if (isGeneratingCaption()) {
+                  <div class="spinner-small"></div>
+                  <span>Generating...</span>
+                } @else {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                  </svg>
+                  <span>Generate Caption</span>
+                }
+              </button>
+              <button 
+                type="button" 
+                class="btn-ai-generate coming-soon"
+                disabled
+                title="AI image generation coming soon"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <span>Generate Image</span>
+                <span class="badge-soon">Soon</span>
+              </button>
+              <button 
+                type="button" 
+                class="btn-ai-generate coming-soon"
+                disabled
+                title="View how post will appear - Coming soon"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span>Peek Post</span>
+                <span class="badge-soon">Soon</span>
+              </button>
+              <button 
+                type="button" 
+                class="btn-ai-generate coming-soon"
+                disabled
+                title="AI-powered scheduling coming soon"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>Schedule with AI</span>
+                <span class="badge-soon">Soon</span>
+              </button>
+            </div>
+            @if (captionGenerationError()) {
+              <div class="ai-generation-error">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span>{{ captionGenerationError() }}</span>
+              </div>
+            }
+            @if (!campaignName().trim()) {
+              <div class="ai-generation-hint">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>Complete Step 1 to enable AI caption generation</span>
+              </div>
+            }
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="postContent">Post Content <span class="required-indicator">*</span></label>
+              <textarea 
+                id="postContent" 
+                [ngModel]="newPostContent()"
+                (ngModelChange)="newPostContent.set($event)"
+                [disabled]="isGeneratingCaption()"
+                placeholder="Write your post content or use AI to generate..."
+                class="form-control"
+                [class.generating]="isGeneratingCaption()"
+                rows="3"
+              ></textarea>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="postImageUrl">Image URL (optional)</label>
+              <input 
+                type="url" 
+                id="postImageUrl"
+                [ngModel]="newPostImageUrl()"
+                (ngModelChange)="newPostImageUrl.set($event)"
+                placeholder="https://example.com/image.jpg"
+                class="form-control"
+              />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="postSchedule">Schedule (optional)</label>
+              <input 
+                type="datetime-local" 
+                id="postSchedule"
+                [ngModel]="newPostScheduledAt()"
+                (ngModelChange)="newPostScheduledAt.set($event)"
+                [min]="getMinDateTime()"
+                class="form-control"
+              />
+              <span class="form-hint">Leave empty for immediate posting</span>
+            </div>
+            <button 
+              type="button" 
+              class="btn-add-post"
+              [disabled]="!newPostContent().trim()"
+              (click)="addPost()"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Post
+            </button>
+          </div>
+        </div>
+
+        <!-- Posts List -->
+        <div class="posts-list">
+          <h3>Campaign Posts ({{ posts().length }})</h3>
+          
+          @if (step2SubmitAttempted() && posts().length === 0) {
+            <div class="validation-warning">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>At least one post is required to proceed</span>
+            </div>
+          }
+          
+          @if (posts().length === 0) {
+            <div class="empty-posts">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              <p>No posts added yet. Create your first post above.</p>
+            </div>
+          } @else {
+            @for (post of posts(); track $index; let i = $index) {
+              <div class="post-card">
+                <div class="post-header">
+                  <span class="post-number">Post {{ i + 1 }}</span>
+                  @if (post.scheduledAt) {
+                    <span class="post-schedule">📅 {{ post.scheduledAt }}</span>
+                  }
+                </div>
+                <div class="post-content">{{ post.content }}</div>
+                @if (post.imageUrl) {
+                  <div class="post-image-url">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    {{ post.imageUrl }}
+                  </div>
+                }
+                <button 
+                  type="button" 
+                  class="btn-remove"
+                  (click)="removePost(i)"
+                >
+                  🗑️
+                </button>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Step 3: Publish/Schedule -->
+    @if (currentStep() === 3) {
+      <div class="step-content">
+        <div class="step-header">
+          <span class="step-icon">🚀</span>
+          <h2>Publish Campaign</h2>
+          <p>Review and launch your campaign</p>
+        </div>
+
+        <!-- Submission Error -->
+        @if (submissionError()) {
+          <div class="submission-error">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <div class="error-content">
+              <strong>Campaign creation failed</strong>
+              <p>{{ submissionError() }}</p>
+              @if (retryCountdown() > 0) {
+                <span class="retry-countdown">Please wait {{ retryCountdown() }} seconds before retrying...</span>
+              } @else {
+                <button class="btn-retry" (click)="clearSubmissionError()">Try Again</button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Submission Progress -->
+        @if (isSubmitting() && submissionProgress()) {
+          <div class="submission-progress">
+            <div class="progress-spinner"></div>
+            <span>{{ submissionProgress() }}</span>
+          </div>
+        }
+
+        <!-- Campaign Summary -->
+        <div class="campaign-summary">
+          <h3>Campaign Summary</h3>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="label">Name</span>
+              <span class="value">{{ campaignName() }}</span>
+            </div>
+            @if (assignedProductId()) {
+              <div class="summary-item">
+                <span class="label">Assigned Product</span>
+                <span class="value">{{ getProductName(assignedProductId()) }}</span>
+              </div>
+            }
+            <div class="summary-item">
+              <span class="label">Total Posts</span>
+              <span class="value">{{ posts().length }} posts</span>
+            </div>
+            @if (goal()) {
+              <div class="summary-item">
+                <span class="label">Goal</span>
+                <span class="value">{{ goal() }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Publish Options -->
+        <div class="publish-options">
+          <h3>Launch Options</h3>
+          
+          <label class="option-card" [class.selected]="publishOption() === 'now'">
+            <input 
+              type="radio" 
+              name="publishOption" 
+              value="now"
+              [checked]="publishOption() === 'now'"
+              (change)="publishOption.set('now')"
+            />
+            <div class="option-content">
+              <span class="option-icon">⚡</span>
+              <div class="option-info">
+                <span class="option-title">Publish Now</span>
+                <span class="option-desc">Start your campaign immediately</span>
+              </div>
+            </div>
+          </label>
+
+          <label class="option-card" [class.selected]="publishOption() === 'schedule'">
+            <input 
+              type="radio" 
+              name="publishOption" 
+              value="schedule"
+              [checked]="publishOption() === 'schedule'"
+              (change)="publishOption.set('schedule')"
+            />
+            <div class="option-content">
+              <span class="option-icon">📅</span>
+              <div class="option-info">
+                <span class="option-title">Schedule for Later</span>
+                <span class="option-desc">Choose a specific date and time</span>
+              </div>
+            </div>
+          </label>
+
+          @if (publishOption() === 'schedule') {
+            <div class="schedule-fields">
+              <div class="form-group">
+                <label for="scheduleStartAt">Schedule Start <span class="required-indicator">*</span></label>
+                <input 
+                  type="datetime-local" 
+                  id="scheduleStartAt" 
+                  [ngModel]="scheduleStartAt()"
+                  (ngModelChange)="scheduleStartAt.set($event)"
+                  (blur)="onScheduleStartBlur()"
+                  [min]="getMinDateTime()"
+                  class="form-control"
+                />
+              </div>
+              <div class="form-group">
+                <label for="scheduleEndAt">Schedule End <span class="required-indicator">*</span></label>
+                <input 
+                  type="datetime-local" 
+                  id="scheduleEndAt" 
+                  [ngModel]="scheduleEndAt()"
+                  (ngModelChange)="scheduleEndAt.set($event)"
+                  (blur)="onScheduleEndBlur()"
+                  [min]="scheduleStartAt() || getMinDateTime()"
+                  class="form-control"
+                />
+              </div>
+
+              @if ((step3SubmitAttempted() || scheduleStartTouched() || scheduleEndTouched()) && !scheduleRangeValidation().valid) {
+                <div class="validation-warning">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <span>{{ scheduleRangeValidation().message }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Important Notice -->
+        <div class="submission-notice">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <p>Campaign creation may take up to 2 minutes. Please do not close this page.</p>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Wizard Actions -->
+  <div class="wizard-actions">
+    <div class="left-actions">
+      @if (currentStep() > 1 && !isSubmitting()) {
+        <button type="button" class="btn-secondary" (click)="prevStep()">
+          ← Previous
+        </button>
+      }
+      @if (!isSubmitting()) {
+        <button type="button" class="btn-draft" (click)="saveAsDraft()" [disabled]="isSubmitting()">
+          Save as Draft
+        </button>
+      }
+    </div>
+    <div class="right-actions">
+      @if (currentStep() < totalSteps) {
+        <button 
+          type="button" 
+          class="btn-primary"
+          [disabled]="!canProceed()"
+          (click)="nextStep()"
+        >
+          Next Step →
+        </button>
+      } @else {
+        <button 
+          type="button" 
+          class="btn-primary btn-submit"
+          [disabled]="!canProceed() || isSubmitting() || retryCountdown() > 0"
+          (click)="submitCampaign()"
+        >
+          @if (isSubmitting()) {
+            <span class="spinner"></span>
+            Creating Campaign...
+          } @else if (publishOption() === 'now') {
+            🚀 Publish Campaign
+          } @else {
+            📅 Schedule Campaign
+          }
+        </button>
+      }
+    </div>
+  </div>
+</div>
