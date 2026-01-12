@@ -28,6 +28,22 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Health check endpoint for monitoring services (Render, Docker, etc.)
+    /// </summary>
+    [HttpGet("health")]
+    public IActionResult Health()
+    {
+        return Ok(new
+        {
+            status = "healthy",
+            service = "Business Manager API",
+            version = "1.0.0",
+            timestamp = DateTime.UtcNow,
+            environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Unknown"
+        });
+    }
+
+    /// <summary>
     /// Manually trigger the platform publishing job
     /// </summary>
     [HttpPost("trigger-platform-publisher")]

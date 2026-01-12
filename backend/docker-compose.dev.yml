@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Backend API (Development Override)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: businessmanager-api-dev
+    ports:
+      - "5000:80"
+      - "5001:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development  # ?? CHANGED to Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__ApplicationSqlConnection=${DB_CONNECTION_STRING}
+      - JwtOptions__SecretKey=${JWT_SECRET_KEY}
+      - JwtOptions__Issuer=${JWT_ISSUER}
+      - JwtOptions__Audience=${JWT_AUDIENCE}
+      - JwtOptions__DurationInDays=${JWT_DURATION_DAYS:-1}
+      - Facebook__AppId=${FACEBOOK_APP_ID}
+      - Facebook__AppSecret=${FACEBOOK_APP_SECRET}
+      - Facebook__RedirectUri=${FACEBOOK_REDIRECT_URI}
+    volumes:
+      # Mount source code for hot reload (development only)
+      - ./Presentation:/app/Presentation
+      - ./Application:/app/Application
+      - ./Infrastructure:/app/Infrastructure
+      - ./Domain:/app/Domain
+    depends_on:
+      - sqlserver
+    networks:
+      - businessmanager-network
+    restart: unless-stopped
+
+  # SQL Server Database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: businessmanager-db-dev
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${DB_SA_PASSWORD}
+      - MSSQL_PID=Express
+    volumes:
+      - sqlserver-data-dev:/var/opt/mssql
+    networks:
+      - businessmanager-network
+    restart: unless-stopped
+
+volumes:
+  sqlserver-data-dev:
+    driver: local
+
+networks:
+  businessmanager-network:
+    driver: bridge

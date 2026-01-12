@@ -21,6 +21,13 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ⭐ Configure Kestrel to use PORT environment variable (required for Render, Railway, etc.)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(int.Parse(port));
+});
+
 // Add services to the container
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -131,8 +138,6 @@ builder.Services.AddSwaggerGen(c =>
     c.OperationFilter<SwaggerStoreIdHeaderOperationFilter>();
 });
 
-builder.Services.AddScoped<IDataSeeding, DataSeeding>();
-
 // register hangfire
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
@@ -154,13 +159,6 @@ builder.Services.AddHangfireServer();
 
 var app = builder.Build();
 
-// Execute data seeding
-using (var scope = app.Services.CreateScope())
-{
-    var objectOfDataSeeding = scope.ServiceProvider.GetRequiredService<IDataSeeding>();
-    await objectOfDataSeeding.DataSeedAsync();
-}
-        
 // ⭐ Register Exception Middleware FIRST - catches all exceptions
 app.UseMiddleware<ExceptionMiddleware>();
 
@@ -168,7 +166,17 @@ app.UseMiddleware<ExceptionMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(); 
+    app.UseSwaggerUI();
+}
+// 🔧 Enable Swagger in Production for API testing (disable for strict production)
+if (app.Environment.IsProduction())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Business Manager API v1");
+        c.RoutePrefix = "swagger"; // Access via /swagger
+    });
 }
 
 // ⭐ Enable static files (for facebook-callback.html)

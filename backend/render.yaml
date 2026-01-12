@@ -1,0 +1,39 @@
+services:
+  # Web Service (Backend API)
+  - type: web
+    name: businessmanager-api
+    env: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:$PORT
+      - key: ConnectionStrings__ApplicationSqlConnection
+        sync: false
+      - key: JwtOptions__SecretKey
+        sync: false
+      - key: JwtOptions__Issuer
+        sync: false
+      - key: JwtOptions__Audience
+        sync: false
+      - key: JwtOptions__DurationInDays
+        value: "1"
+      - key: Facebook__AppId
+        sync: false
+      - key: Facebook__AppSecret
+        sync: false
+      - key: Facebook__RedirectUri
+        sync: false
+    healthCheckPath: /api/diagnostics/health
+
+  # PostgreSQL Database (Optional - if not using external SQL Server)
+  # - type: pserv
+  #   name: businessmanager-db
+  #   env: docker
+  #   region: oregon
+  #   plan: free
+  #   dockerfilePath: ./Dockerfile.postgres
